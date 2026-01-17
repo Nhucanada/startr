@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, IconButton } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 import BottomNav from './BottomNav.js'
+import CreateTaskPopup from './CreateTaskPopup.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -32,6 +34,34 @@ const GradientContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
+})
+
+const TaskListContainer = styled(Box)({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0, // Important for flexbox scrolling
+})
+
+const ScrollableTaskList = styled(Box)({
+  flex: 1,
+  overflowY: 'auto',
+  paddingRight: '8px',
+  marginRight: '-8px',
+  '&::-webkit-scrollbar': {
+    width: '4px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'rgba(255,255,255,0.1)',
+    borderRadius: '2px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: 'rgba(255,255,255,0.3)',
+    borderRadius: '2px',
+  },
+  '&::-webkit-scrollbar-thumb:hover': {
+    background: 'rgba(255,255,255,0.5)',
+  },
 })
 
 const StreakContainer = styled(Box)({
@@ -99,43 +129,118 @@ const HabitText = styled(Typography)({
   fontWeight: '400',
 })
 
+const AddButtonContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: '20px',
+})
+
+const StyledAddButton = styled(IconButton)({
+  backgroundColor: '#5B5F9E',
+  color: '#FFFFFF',
+  width: '56px',
+  height: '56px',
+  '&:hover': {
+    backgroundColor: '#6B6FAE',
+  },
+})
+
 interface HabitTrackerProps {
   onNavigate: (page: 'new' | 'home' | 'button') => void
 }
 
-export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
-  const [isChecked, setIsChecked] = useState(false)
+interface Task {
+  id: string
+  title: string
+  completed: boolean
+}
 
-  const handleCheckboxClick = () => {
-    setIsChecked(!isChecked)
+export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
+  const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Make the bed', completed: false },
+    { id: '2', title: 'Exercise for 30 minutes', completed: true },
+    { id: '3', title: 'Read 10 pages', completed: false },
+    { id: '4', title: 'Drink 8 glasses of water', completed: false },
+    { id: '5', title: 'Meditate for 5 minutes', completed: true },
+    { id: '6', title: 'Write in journal', completed: false }
+  ])
+
+  const handleCreateTask = (title: string) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title,
+      completed: false
+    }
+    setTasks([...tasks, newTask])
+  }
+
+  const handleToggleTask = (taskId: string) => {
+    setTasks(tasks.map(task =>
+      task.id === taskId
+        ? { ...task, completed: !task.completed }
+        : task
+    ))
+  }
+
+  const handleOpenCreateTask = () => {
+    setShowCreateTaskPopup(true)
+  }
+
+  const handleCloseCreateTask = () => {
+    setShowCreateTaskPopup(false)
   }
 
   return (
-    <AppContainer>
-      <MobileFrame>
-        <GradientContainer>
-          <StreakContainer>
-            <Box>
-              <StreakText>{isChecked ? 1 : 0}</StreakText>
-              <StreakSubText>tasks completed!</StreakSubText>
-            </Box>
-            <FireEmoji>🔥</FireEmoji>
-          </StreakContainer>
+    <>
+      <AppContainer>
+        <MobileFrame>
+          <GradientContainer>
+            <StreakContainer>
+              <Box>
+                <StreakText>67</StreakText>
+                <StreakSubText>day streak!</StreakSubText>
+              </Box>
+              <FireEmoji>🔥</FireEmoji>
+            </StreakContainer>
 
-          <Box sx={{ flex: 1 }}>
-            <HabitCard>
-              <HabitText>Make the bed</HabitText>
-              <CheckboxContainer checked={isChecked} onClick={handleCheckboxClick}>
-                {isChecked && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />}
-              </CheckboxContainer>
-            </HabitCard>
+            <TaskListContainer>
+              <ScrollableTaskList>
+                {tasks.map((task) => (
+                  <HabitCard key={task.id}>
+                    <HabitText>{task.title}</HabitText>
+                    <CheckboxContainer
+                      checked={task.completed}
+                      onClick={() => handleToggleTask(task.id)}
+                    >
+                      {task.completed && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '24px' }} />}
+                    </CheckboxContainer>
+                  </HabitCard>
+                ))}
 
-            <EmptyHabitCard />
-            <EmptyHabitCard />
-          </Box>
-        </GradientContainer>
-        <BottomNav currentPage="home" onNavigate={onNavigate} />
-      </MobileFrame>
-    </AppContainer>
+                {/* Show empty cards only if we have less than 3 tasks */}
+                {tasks.length < 3 && Array.from({ length: 3 - tasks.length }, (_, index) => (
+                  <EmptyHabitCard key={`empty-${index}`} />
+                ))}
+              </ScrollableTaskList>
+
+              <AddButtonContainer>
+                <StyledAddButton onClick={handleOpenCreateTask}>
+                  <AddIcon />
+                </StyledAddButton>
+              </AddButtonContainer>
+            </TaskListContainer>
+          </GradientContainer>
+          <BottomNav currentPage="home" onNavigate={onNavigate} />
+        </MobileFrame>
+      </AppContainer>
+
+      {showCreateTaskPopup && (
+        <CreateTaskPopup
+          onClose={handleCloseCreateTask}
+          onCreateTask={handleCreateTask}
+        />
+      )}
+    </>
   )
 }

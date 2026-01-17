@@ -97,7 +97,21 @@ const HabitCard = styled(Box)({
   minHeight: '80px',
   display: 'flex',
   alignItems: 'center',
+  justifyContent: 'space-between',
 })
+
+const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
+  width: '48px',
+  height: '48px',
+  borderRadius: '12px',
+  backgroundColor: checked ? '#7FD4A3' : 'rgba(255,255,255,0.2)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  transition: 'background-color 0.2s ease',
+  flexShrink: 0,
+}))
 
 const EmptyHabitCard = styled(Box)({
   backgroundColor: '#4A4E7A',

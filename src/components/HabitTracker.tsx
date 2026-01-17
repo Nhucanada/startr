@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Box, Typography, IconButton } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
+import CheckIcon from '@mui/icons-material/Check'
 import BottomNav from './BottomNav.js'
 import CreateTaskPopup from './CreateTaskPopup.js'
 
@@ -148,19 +149,38 @@ interface HabitTrackerProps {
   onNavigate: (page: 'home' | 'button') => void
 }
 
+interface Task {
+  id: string
+  title: string
+  completed: boolean
+}
+
 export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
   const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
-  const [tasks, setTasks] = useState([
-    'Make the bed',
-    'Exercise for 30 minutes',
-    'Read 10 pages',
-    'Drink 8 glasses of water',
-    'Meditate for 5 minutes',
-    'Write in journal'
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Make the bed', completed: false },
+    { id: '2', title: 'Exercise for 30 minutes', completed: true },
+    { id: '3', title: 'Read 10 pages', completed: false },
+    { id: '4', title: 'Drink 8 glasses of water', completed: false },
+    { id: '5', title: 'Meditate for 5 minutes', completed: true },
+    { id: '6', title: 'Write in journal', completed: false }
   ])
 
   const handleCreateTask = (title: string) => {
-    setTasks([...tasks, title])
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title,
+      completed: false
+    }
+    setTasks([...tasks, newTask])
+  }
+
+  const handleToggleTask = (taskId: string) => {
+    setTasks(tasks.map(task =>
+      task.id === taskId
+        ? { ...task, completed: !task.completed }
+        : task
+    ))
   }
 
   const handleOpenCreateTask = () => {
@@ -186,9 +206,15 @@ export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
 
             <TaskListContainer>
               <ScrollableTaskList>
-                {tasks.map((task, index) => (
-                  <HabitCard key={index}>
-                    <HabitText>{task}</HabitText>
+                {tasks.map((task) => (
+                  <HabitCard key={task.id}>
+                    <HabitText>{task.title}</HabitText>
+                    <CheckboxContainer
+                      checked={task.completed}
+                      onClick={() => handleToggleTask(task.id)}
+                    >
+                      {task.completed && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '24px' }} />}
+                    </CheckboxContainer>
                   </HabitCard>
                 ))}
 

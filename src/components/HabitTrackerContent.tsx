@@ -6,7 +6,7 @@ import CheckIcon from '@mui/icons-material/Check'
 
 const GradientContainer = styled(Box)({
   height: '100%',
-  padding: '60px 32px 100px',
+  padding: '32px 32px 100px',
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
@@ -16,7 +16,7 @@ const StreakContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: '60px',
+  marginBottom: '5px',
 })
 
 const StreakText = styled(Typography)({
@@ -61,6 +61,26 @@ const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
   transition: 'background-color 0.2s ease',
   flexShrink: 0,
 }))
+
+const StreakCounter = styled(Box)({
+  backgroundColor: 'rgba(255,255,255,0.1)',
+  borderRadius: '16px',
+  padding: '8px 12px',
+  marginRight: '12px',
+  flexShrink: 0,
+})
+
+const TaskStreakText = styled(Typography)({
+  color: '#FFFFFF',
+  fontSize: '14px',
+  fontWeight: '600',
+})
+
+const TaskRightContainer = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+})
 
 const EmptyHabitCard = styled(Box)({
   backgroundColor: '#4A4E7A',
@@ -125,6 +145,7 @@ interface Task {
   id: string
   title: string
   completed: boolean
+  streak: number
 }
 
 interface HabitTrackerContentProps {
@@ -135,7 +156,12 @@ export default function HabitTrackerContent({
   onOpenCreateTask,
 }: HabitTrackerContentProps) {
   const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: 'Make the bed', completed: false },
+    { id: '1', title: 'Make the bed', completed: false, streak: 5 },
+    { id: '2', title: 'Exercise for 30 minutes', completed: true, streak: 12 },
+    { id: '3', title: 'Read 10 pages', completed: false, streak: 3 },
+    { id: '4', title: 'Drink 8 glasses of water', completed: false, streak: 1 },
+    { id: '5', title: 'Meditate for 5 minutes', completed: true, streak: 8 },
+    { id: '6', title: 'Write in journal', completed: false, streak: 0 }
   ])
 
   const handleCreateTask = (title: string) => {
@@ -143,6 +169,7 @@ export default function HabitTrackerContent({
       id: Date.now().toString(),
       title,
       completed: false,
+      streak: 0,
     }
     setTasks([...tasks, newTask])
   }
@@ -176,14 +203,19 @@ export default function HabitTrackerContent({
           {tasks.map((task) => (
             <HabitCard key={task.id}>
               <HabitText>{task.title}</HabitText>
-              <CheckboxContainer
-                checked={task.completed}
-                onClick={() => handleToggleTask(task.id)}
-              >
-                {task.completed && (
-                  <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />
-                )}
-              </CheckboxContainer>
+              <TaskRightContainer>
+                <StreakCounter>
+                  <TaskStreakText>{task.streak} 🔥</TaskStreakText>
+                </StreakCounter>
+                <CheckboxContainer
+                  checked={task.completed}
+                  onClick={() => handleToggleTask(task.id)}
+                >
+                  {task.completed && (
+                    <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />
+                  )}
+                </CheckboxContainer>
+              </TaskRightContainer>
             </HabitCard>
           ))}
 

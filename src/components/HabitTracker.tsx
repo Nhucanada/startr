@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import CheckIcon from '@mui/icons-material/Check'
 import BottomNav from './BottomNav.js'
 
 const AppContainer = styled(Box)({
@@ -66,7 +68,21 @@ const HabitCard = styled(Box)({
   minHeight: '80px',
   display: 'flex',
   alignItems: 'center',
+  justifyContent: 'space-between',
 })
+
+const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
+  width: '48px',
+  height: '48px',
+  borderRadius: '12px',
+  backgroundColor: checked ? '#7FD4A3' : 'rgba(255,255,255,0.2)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  transition: 'background-color 0.2s ease',
+  flexShrink: 0,
+}))
 
 const EmptyHabitCard = styled(Box)({
   backgroundColor: '#4A4E7A',
@@ -88,14 +104,20 @@ interface HabitTrackerProps {
 }
 
 export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
+  const [isChecked, setIsChecked] = useState(false)
+
+  const handleCheckboxClick = () => {
+    setIsChecked(!isChecked)
+  }
+
   return (
     <AppContainer>
       <MobileFrame>
         <GradientContainer>
           <StreakContainer>
             <Box>
-              <StreakText>67</StreakText>
-              <StreakSubText>day streak!</StreakSubText>
+              <StreakText>{isChecked ? 1 : 0}</StreakText>
+              <StreakSubText>tasks completed!</StreakSubText>
             </Box>
             <FireEmoji>🔥</FireEmoji>
           </StreakContainer>
@@ -103,6 +125,9 @@ export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
           <Box sx={{ flex: 1 }}>
             <HabitCard>
               <HabitText>Make the bed</HabitText>
+              <CheckboxContainer checked={isChecked} onClick={handleCheckboxClick}>
+                {isChecked && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />}
+              </CheckboxContainer>
             </HabitCard>
 
             <EmptyHabitCard />

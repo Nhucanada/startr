@@ -111,7 +111,7 @@ function App() {
                     No users found. Create one above!
                   </Typography>
                 ) : (
-                  users.data.map((user: any) => (
+                  users.data.map((user: { id: string; name: string; email: string }) => (
                     <Box key={user.id} sx={{ p: 2, border: 1, borderColor: 'divider', mb: 1, borderRadius: 1 }}>
                       <Typography variant="h6">{user.name}</Typography>
                       <Typography color="textSecondary">{user.email}</Typography>

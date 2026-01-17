@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, IconButton } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 
 const GradientContainer = styled(Box)({
@@ -76,34 +77,128 @@ const HabitText = styled(Typography)({
   fontWeight: '400',
 })
 
-export default function HabitTrackerContent() {
-  const [isChecked, setIsChecked] = useState(false)
+const TaskListContainer = styled(Box)({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+})
 
-  const handleCheckboxClick = () => {
-    setIsChecked(!isChecked)
+const ScrollableTaskList = styled(Box)({
+  flex: 1,
+  overflowY: 'auto',
+  paddingRight: '8px',
+  marginRight: '-8px',
+  '&::-webkit-scrollbar': {
+    width: '4px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'rgba(255,255,255,0.1)',
+    borderRadius: '2px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: 'rgba(255,255,255,0.3)',
+    borderRadius: '2px',
+  },
+  '&::-webkit-scrollbar-thumb:hover': {
+    background: 'rgba(255,255,255,0.5)',
+  },
+})
+
+const AddButtonContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: '20px',
+})
+
+const StyledAddButton = styled(IconButton)({
+  backgroundColor: '#5B5F9E',
+  color: '#FFFFFF',
+  width: '56px',
+  height: '56px',
+  '&:hover': {
+    backgroundColor: '#6B6FAE',
+  },
+})
+
+interface Task {
+  id: string
+  title: string
+  completed: boolean
+}
+
+interface HabitTrackerContentProps {
+  onOpenCreateTask: (callback: (title: string) => void) => void
+}
+
+export default function HabitTrackerContent({
+  onOpenCreateTask,
+}: HabitTrackerContentProps) {
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Make the bed', completed: false },
+  ])
+
+  const handleCreateTask = (title: string) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title,
+      completed: false,
+    }
+    setTasks([...tasks, newTask])
   }
+
+  const handleToggleTask = (taskId: string) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    )
+  }
+
+  const handleOpenCreateTask = () => {
+    onOpenCreateTask(handleCreateTask)
+  }
+
+  const completedCount = tasks.filter((task) => task.completed).length
 
   return (
     <GradientContainer>
       <StreakContainer>
         <Box>
-          <StreakText>{isChecked ? 1 : 0}</StreakText>
+          <StreakText>{completedCount}</StreakText>
           <StreakSubText>tasks completed!</StreakSubText>
         </Box>
         <FireEmoji>🔥</FireEmoji>
       </StreakContainer>
 
-      <Box sx={{ flex: 1 }}>
-        <HabitCard>
-          <HabitText>Make the bed</HabitText>
-          <CheckboxContainer checked={isChecked} onClick={handleCheckboxClick}>
-            {isChecked && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />}
-          </CheckboxContainer>
-        </HabitCard>
+      <TaskListContainer>
+        <ScrollableTaskList>
+          {tasks.map((task) => (
+            <HabitCard key={task.id}>
+              <HabitText>{task.title}</HabitText>
+              <CheckboxContainer
+                checked={task.completed}
+                onClick={() => handleToggleTask(task.id)}
+              >
+                {task.completed && (
+                  <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />
+                )}
+              </CheckboxContainer>
+            </HabitCard>
+          ))}
 
-        <EmptyHabitCard />
-        <EmptyHabitCard />
-      </Box>
+          {tasks.length < 3 &&
+            Array.from({ length: 3 - tasks.length }, (_, index) => (
+              <EmptyHabitCard key={`empty-${index}`} />
+            ))}
+        </ScrollableTaskList>
+
+        <AddButtonContainer>
+          <StyledAddButton onClick={handleOpenCreateTask}>
+            <AddIcon />
+          </StyledAddButton>
+        </AddButtonContainer>
+      </TaskListContainer>
     </GradientContainer>
   )
 }

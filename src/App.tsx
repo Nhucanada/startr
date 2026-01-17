@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import SwipeablePages, { PageType } from './components/SwipeablePages.js'
@@ -7,6 +7,7 @@ import HabitTrackerContent from './components/HabitTrackerContent.js'
 import ButtonPageContent from './components/ButtonPageContent.js'
 import BottomNav from './components/BottomNav.js'
 import CameraPopup from './components/CameraPopup.js'
+import CreateTaskPopup from './components/CreateTaskPopup.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -33,6 +34,8 @@ const MobileFrame = styled(Box)({
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
   const [showCameraPopup, setShowCameraPopup] = useState(false)
+  const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
+  const createTaskCallbackRef = useRef<((title: string) => void) | null>(null)
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page)
@@ -46,13 +49,29 @@ function App() {
     setShowCameraPopup(false)
   }
 
+  const handleOpenCreateTask = (callback: (title: string) => void) => {
+    createTaskCallbackRef.current = callback
+    setShowCreateTaskPopup(true)
+  }
+
+  const handleCreateTask = (title: string) => {
+    if (createTaskCallbackRef.current) {
+      createTaskCallbackRef.current(title)
+    }
+  }
+
+  const handleCloseCreateTask = () => {
+    setShowCreateTaskPopup(false)
+    createTaskCallbackRef.current = null
+  }
+
   return (
     <>
       <AppContainer>
         <MobileFrame>
           <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>
             <NewPageContent />
-            <HabitTrackerContent />
+            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} />
             <ButtonPageContent onButtonClick={handleButtonClick} />
           </SwipeablePages>
           <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
@@ -61,6 +80,13 @@ function App() {
 
       {showCameraPopup && (
         <CameraPopup onClose={handleCloseCameraPopup} />
+      )}
+
+      {showCreateTaskPopup && (
+        <CreateTaskPopup
+          onClose={handleCloseCreateTask}
+          onCreateTask={handleCreateTask}
+        />
       )}
     </>
   )

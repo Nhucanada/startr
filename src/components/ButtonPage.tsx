@@ -1,7 +1,7 @@
 import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import Button3D from './Button3D.js'
-import LockIcon from '@mui/icons-material/Lock'
+import BottomNav from './BottomNav.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -29,32 +29,17 @@ const MobileFrame = styled(Box)({
   justifyContent: 'center',
 })
 
-const LockContainer = styled(Box)({
-  position: 'absolute',
-  bottom: '40px',
-  right: '40px',
-})
-
-const StyledLockIcon = styled(LockIcon)({
-  color: '#D4AF37',
-  fontSize: '32px',
-  cursor: 'pointer',
-})
-
 interface ButtonPageProps {
-  onBackClick: () => void
   onButtonClick: () => void
+  onNavigate: (page: 'home' | 'button') => void
 }
 
-export default function ButtonPage({ onBackClick, onButtonClick }: ButtonPageProps) {
+export default function ButtonPage({ onButtonClick, onNavigate }: ButtonPageProps) {
   return (
     <AppContainer>
       <MobileFrame>
         <Button3D onClick={onButtonClick} />
-
-        <LockContainer>
-          <StyledLockIcon onClick={onBackClick} />
-        </LockContainer>
+        <BottomNav currentPage="button" onNavigate={onNavigate} />
       </MobileFrame>
     </AppContainer>
   )

@@ -1,6 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import LockIcon from '@mui/icons-material/Lock'
+import BottomNav from './BottomNav.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -26,7 +26,7 @@ const MobileFrame = styled(Box)({
 
 const GradientContainer = styled(Box)({
   height: '100%',
-  padding: '60px 32px 32px',
+  padding: '60px 32px 100px',
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
@@ -83,23 +83,11 @@ const HabitText = styled(Typography)({
   fontWeight: '400',
 })
 
-const LockContainer = styled(Box)({
-  position: 'absolute',
-  bottom: '40px',
-  right: '40px',
-})
-
-const StyledLockIcon = styled(LockIcon)({
-  color: '#D4AF37',
-  fontSize: '32px',
-  cursor: 'pointer',
-})
-
 interface HabitTrackerProps {
-  onLockClick: () => void
+  onNavigate: (page: 'home' | 'button') => void
 }
 
-export default function HabitTracker({ onLockClick }: HabitTrackerProps) {
+export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
   return (
     <AppContainer>
       <MobileFrame>
@@ -120,11 +108,8 @@ export default function HabitTracker({ onLockClick }: HabitTrackerProps) {
             <EmptyHabitCard />
             <EmptyHabitCard />
           </Box>
-
-          <LockContainer>
-            <StyledLockIcon onClick={onLockClick} />
-          </LockContainer>
         </GradientContainer>
+        <BottomNav currentPage="home" onNavigate={onNavigate} />
       </MobileFrame>
     </AppContainer>
   )

@@ -4,8 +4,8 @@ import App from './App.tsx'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { trpc } from './utils/trpc'
-import { trpcClient, queryClient } from './utils/trpcClient'
+import { trpc } from './utils/trpc.js'
+import { trpcClient, queryClient } from './utils/trpcClient.js'
 
 const theme = createTheme({
   palette: {

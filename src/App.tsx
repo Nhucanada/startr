@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Container, Typography, Box, Button, AppBar, Toolbar, TextField, CircularProgress, Alert } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import { trpc } from './utils/trpc'
+import { trpc } from './utils/trpc.js'
 
 const StyledContainer = styled(Container)(({ theme }) => ({
   paddingTop: theme.spacing(4),

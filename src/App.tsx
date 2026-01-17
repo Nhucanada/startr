@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Container, Typography, Box, Button, AppBar, Toolbar, TextField, CircularProgress, Alert } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { trpc } from './utils/trpc'

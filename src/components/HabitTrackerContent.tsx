@@ -2,29 +2,6 @@ import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
-import BottomNav from './BottomNav.js'
-
-const AppContainer = styled(Box)({
-  minHeight: '100vh',
-  backgroundColor: '#1A1A1A',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: '20px',
-})
-
-const MobileFrame = styled(Box)({
-  width: '390px',
-  height: '844px',
-  maxWidth: '100vw',
-  maxHeight: '100vh',
-  aspectRatio: '9/16',
-  background: 'linear-gradient(180deg, #4A4E7A 0%, #2E3267 50%, #1A1B4B 100%)',
-  borderRadius: '24px',
-  overflow: 'hidden',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-  position: 'relative',
-})
 
 const GradientContainer = styled(Box)({
   height: '100%',
@@ -99,11 +76,7 @@ const HabitText = styled(Typography)({
   fontWeight: '400',
 })
 
-interface HabitTrackerProps {
-  onNavigate: (page: 'new' | 'home' | 'button') => void
-}
-
-export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
+export default function HabitTrackerContent() {
   const [isChecked, setIsChecked] = useState(false)
 
   const handleCheckboxClick = () => {
@@ -111,31 +84,26 @@ export default function HabitTracker({ onNavigate }: HabitTrackerProps) {
   }
 
   return (
-    <AppContainer>
-      <MobileFrame>
-        <GradientContainer>
-          <StreakContainer>
-            <Box>
-              <StreakText>{isChecked ? 1 : 0}</StreakText>
-              <StreakSubText>tasks completed!</StreakSubText>
-            </Box>
-            <FireEmoji>🔥</FireEmoji>
-          </StreakContainer>
+    <GradientContainer>
+      <StreakContainer>
+        <Box>
+          <StreakText>{isChecked ? 1 : 0}</StreakText>
+          <StreakSubText>tasks completed!</StreakSubText>
+        </Box>
+        <FireEmoji>🔥</FireEmoji>
+      </StreakContainer>
 
-          <Box sx={{ flex: 1 }}>
-            <HabitCard>
-              <HabitText>Make the bed</HabitText>
-              <CheckboxContainer checked={isChecked} onClick={handleCheckboxClick}>
-                {isChecked && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />}
-              </CheckboxContainer>
-            </HabitCard>
+      <Box sx={{ flex: 1 }}>
+        <HabitCard>
+          <HabitText>Make the bed</HabitText>
+          <CheckboxContainer checked={isChecked} onClick={handleCheckboxClick}>
+            {isChecked && <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />}
+          </CheckboxContainer>
+        </HabitCard>
 
-            <EmptyHabitCard />
-            <EmptyHabitCard />
-          </Box>
-        </GradientContainer>
-        <BottomNav currentPage="home" onNavigate={onNavigate} />
-      </MobileFrame>
-    </AppContainer>
+        <EmptyHabitCard />
+        <EmptyHabitCard />
+      </Box>
+    </GradientContainer>
   )
 }

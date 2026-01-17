@@ -1,5 +1,6 @@
 import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import { PageType } from './SwipeablePages.js'
 
 const NavContainer = styled(Box)({
   position: 'absolute',
@@ -28,6 +29,31 @@ const NavButton = styled(Box)<{ active?: boolean }>(({ active }) => ({
   },
 }))
 
+const DotsContainer = styled(Box)({
+  position: 'absolute',
+  bottom: '70px',
+  left: 0,
+  right: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  gap: '8px',
+})
+
+const Dot = styled(Box)<{ active?: boolean }>(({ active }) => ({
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  backgroundColor: active ? '#A68743' : 'rgba(255,255,255,0.3)',
+  transition: 'background-color 0.2s ease',
+}))
+
+const NewPageIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 4C9.373 4 4 9.373 4 16s5.373 12 12 12 12-5.373 12-12S22.627 4 16 4zm0 22c-5.523 0-10-4.477-10-10S10.477 6 16 6s10 4.477 10 10-4.477 10-10 10z" fill="#A68743"/>
+    <path d="M17 11h-2v4h-4v2h4v4h2v-4h4v-2h-4v-4z" fill="#A68743"/>
+  </svg>
+)
+
 const HomeIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <g clipPath="url(#clip0_78_45)">
@@ -47,20 +73,32 @@ const ButtonIcon = () => (
   </svg>
 )
 
+const PAGE_ORDER: PageType[] = ['new', 'home', 'button']
+
 interface BottomNavProps {
-  currentPage: 'home' | 'button'
-  onNavigate: (page: 'home' | 'button') => void
+  currentPage: PageType
+  onNavigate: (page: PageType) => void
 }
 
 export default function BottomNav({ currentPage, onNavigate }: BottomNavProps) {
   return (
-    <NavContainer>
-      <NavButton active={currentPage === 'home'} onClick={() => onNavigate('home')}>
-        <HomeIcon />
-      </NavButton>
-      <NavButton active={currentPage === 'button'} onClick={() => onNavigate('button')}>
-        <ButtonIcon />
-      </NavButton>
-    </NavContainer>
+    <>
+      <DotsContainer>
+        {PAGE_ORDER.map((page) => (
+          <Dot key={page} active={currentPage === page} />
+        ))}
+      </DotsContainer>
+      <NavContainer>
+        <NavButton active={currentPage === 'new'} onClick={() => onNavigate('new')}>
+          <NewPageIcon />
+        </NavButton>
+        <NavButton active={currentPage === 'home'} onClick={() => onNavigate('home')}>
+          <HomeIcon />
+        </NavButton>
+        <NavButton active={currentPage === 'button'} onClick={() => onNavigate('button')}>
+          <ButtonIcon />
+        </NavButton>
+      </NavContainer>
+    </>
   )
 }

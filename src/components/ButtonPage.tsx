@@ -31,7 +31,7 @@ const MobileFrame = styled(Box)({
 
 interface ButtonPageProps {
   onButtonClick: () => void
-  onNavigate: (page: 'home' | 'button') => void
+  onNavigate: (page: 'new' | 'home' | 'button') => void
 }
 
 export default function ButtonPage({ onButtonClick, onNavigate }: ButtonPageProps) {

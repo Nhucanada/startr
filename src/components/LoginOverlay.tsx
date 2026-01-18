@@ -5,6 +5,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import EmailIcon from '@mui/icons-material/Email'
 import { authService, LoginCredentials, RegisterCredentials } from '../services/auth.js'
+import { useLogin } from '../hooks/useLogin.js'
 
 const Overlay = styled(Box)({
   position: 'fixed',
@@ -135,6 +136,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
   const [currentTab, setCurrentTab] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { login, isLoading: loginLoading } = useLogin()
 
   // Login form state
   const [loginForm, setLoginForm] = useState<LoginCredentials>({
@@ -164,16 +166,13 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
       return
     }
 
-    setLoading(true)
     setError('')
 
     try {
-      await authService.login(loginForm)
+      await login(loginForm.email, loginForm.password)
       onLoginSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -313,7 +312,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
                 label="Email"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                disabled={loading}
+                disabled={loginLoading}
               />
 
               <StyledTextField
@@ -322,15 +321,15 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
                 label="Password"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                disabled={loading}
+                disabled={loginLoading}
               />
 
               <SubmitButton
                 fullWidth
                 onClick={handleLogin}
-                disabled={loading || !loginForm.email.trim() || !loginForm.password}
+                disabled={loginLoading || !loginForm.email.trim() || !loginForm.password}
               >
-                {loading ? <CircularProgress size={20} /> : 'Login'}
+                {loginLoading ? <CircularProgress size={20} /> : 'Login'}
               </SubmitButton>
 
               <ForgotPasswordButton

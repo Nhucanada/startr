@@ -2,26 +2,28 @@ import { router, publicProcedure } from './trpc-init.ts'; // Assuming context ty
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
+import { supabase } from '../lib/supabase.ts';
+
 export const userRouter = router({
   // 1. Registration: /auth/register
   register: publicProcedure
-    .input(
-      z.object({
-        email: z.string().email(),
-        password: z.string().min(6, 'Password must be at least 6 characters'),
-        name: z.string().optional(),
-      })
-    )
-    .mutation(async ({ input, ctx }) => {
-      const { data, error } = await ctx.supabase.auth.signUp({
-        email: input.email,
-        password: input.password,
-        options: {
-          data: {
-            full_name: input.name,
-          },
-        },
-      });
+      .input(
+          z.object({
+            email: z.string().email(),
+            password: z.string().min(6, 'Password must be at least 6 characters'),
+            name: z.string().optional(),
+          })
+      )
+      .mutation(async ({ input, ctx }) => {
+          const { data, error } = await supabase.auth.signUp({
+              email: input.email,
+              password: input.password,
+              options: {
+                  data: {
+                      full_name: input.name,
+                  },
+            },
+        });
 
       if (error) {
         throw new TRPCError({
@@ -42,7 +44,7 @@ export const userRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { data, error } = await ctx.supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: input.email,
         password: input.password,
       });
@@ -59,7 +61,7 @@ export const userRouter = router({
 
   // 3. Logout: /auth/logout
   logout: publicProcedure.mutation(async ({ ctx }) => {
-    const { error } = await ctx.supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
       throw new TRPCError({
@@ -75,7 +77,7 @@ export const userRouter = router({
   token: publicProcedure
     .input(z.object({ refreshToken: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const { data, error } = await ctx.supabase.auth.refreshSession({
+      const { data, error } = await supabase.auth.refreshSession({
         refresh_token: input.refreshToken,
       });
 
@@ -96,7 +98,7 @@ export const userRouter = router({
     const {
       data: { user },
       error,
-    } = await ctx.supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (error || !user) {
       throw new TRPCError({
@@ -114,7 +116,7 @@ export const userRouter = router({
     reset: publicProcedure
       .input(z.object({ email: z.string().email() }))
       .mutation(async ({ input, ctx }) => {
-        const { error } = await ctx.supabase.auth.resetPasswordForEmail(
+        const { error } = await supabase.auth.resetPasswordForEmail(
           input.email,
           {
             // You typically need a frontend URL here for the redirect

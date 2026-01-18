@@ -37,14 +37,16 @@ const AIService = {
  * Interacts directly with Supabase tables.
  */
 const HabitService = {
-    create: async (userId: string, planData: any, imageUrl: string, desc?: string) => { 
+    create: async (userId: string, planData: any, imageUrl: string) => { 
         const { data, error } = await supabase
             .from('habits')
             .insert({
+                // id: uuid (automatically generated)
+                // created_at: timestamp (now())
                 user_id: userId,
                 name: planData.title || 'New Habit',
-                backdrop_url: imageUrl,
-                desc: desc ?? null
+                desc: planData,
+                backdrop_url: imageUrl // Assuming column is text/varchar
             })
             .select()
             .single();
@@ -68,20 +70,20 @@ const HabitService = {
         return { success: true, deleted: data[0] };
     },
 
-    deleteByDescription: async (userId: string, name: string) => { 
-        // Hackathon logic: Delete the most recent one matching the name
+    deleteByDescription: async (userId: string, description: string) => { 
+        // Hackathon logic: Delete the most recent one matching the description
         // 1. Find it
         const { data: found } = await supabase
             .from('habits')
             .select('id')
             .eq('user_id', userId)
-            .ilike('name', name)
+            .ilike('desc', description)
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
 
         if (!found) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'No habit found with that name' });
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'No habit found with that description' });
         }
 
         // 2. Delete it
@@ -108,11 +110,11 @@ const HabitService = {
     },
 
     findClosestMatch: async (userId: string, name: string) => { 
-        // Simple fuzzy search using ILIKE on habit names
+        // Simple fuzzy search using ILIKE
         // For production, swap this with .textSearch() or pgvector
         const { data, error } = await supabase
             .from('habits')
-            .select('*') // Exclude heavy fields if needed
+            .select('*') // Exclude image_url if heavy?
             .eq('user_id', userId)
             .ilike('name', `%${name}%`)
             .limit(1)
@@ -124,10 +126,10 @@ const HabitService = {
     },
 
     findAllByUser: async (userId: string) => { 
-        // PERF: Explicitly selecting columns to EXCLUDE any heavy fields
+        // PERF: Explicitly selecting columns to EXCLUDE the potentially heavy 'image_url'
         const { data, error } = await supabase
             .from('habits')
-            .select('id, user_id, name, desc, backdrop_url, panic_image_id, created_at') 
+            .select('id, user_id, description, status, plan, created_at') 
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -135,7 +137,7 @@ const HabitService = {
         return data;
     },
 
-    getPhoto: async (userId: string, habitId: string) => { 
+    getBackdrop: async (userId: string, habitId: string) => { 
         // Only fetch the image column
         const { data, error } = await supabase
             .from('habits')
@@ -145,7 +147,20 @@ const HabitService = {
             .single();
 
         if (error) throw error;
-        return data; // Returns { backdrop_url: "..." }
+        return data; // Returns { image_url: "..." }
+    },
+
+    getPanicPhoto: async (userId: string, habitId: string) => { 
+        // Only fetch the image column
+        const { data, error } = await supabase
+            .from('habits')
+            .select('backdrop_url')
+            .eq('id', habitId)
+            .eq('user_id', userId)
+            .single();
+
+        if (error) throw error;
+        return data; // Returns { image_url: "..." }
     },
 };
 
@@ -155,8 +170,7 @@ export const habitsRouter = router({
     // 1. Create: /habits/create/
     createHabit: protectedProcedure
         .input(z.object({
-            name: z.string().min(1, "Name is required"),
-            desc: z.string().optional(),
+            description: z.string().min(1, "Description is required"),
             style: z.string().optional().default("minimalist"),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -164,7 +178,7 @@ export const habitsRouter = router({
                 const userId = ctx.user.id;
 
                 // Step 1 (Mocked AI): Generate Plan
-                const habitPlan = await AIService.generateHabitPlan(input.name);
+                const habitPlan = await AIService.generateHabitPlan(input.description);
 
                 // Step 2 (Mocked AI): Generate Image
                 const generatedImage = await AIService.generateHabitImage({
@@ -173,7 +187,7 @@ export const habitsRouter = router({
                 });
 
                 // Step 3: Persist to Supabase
-                const newHabit = await HabitService.create(userId, habitPlan, generatedImage, input.desc);
+                const newHabit = await HabitService.create(userId, habitPlan, generatedImage);
 
                 return newHabit;
             } catch (error: any) {
@@ -190,18 +204,18 @@ export const habitsRouter = router({
     deleteHabit: protectedProcedure
         .input(z.object({
             uuid: z.string().uuid().optional(),
-            name: z.string().optional(),
+            description: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
-            const { uuid, name } = input;
+            const { uuid, description } = input;
             const userId = ctx.user.id;
 
             try {
                 if (uuid) {
                     return await HabitService.deleteById(userId, uuid);
                 } 
-                if (name) {
-                    return await HabitService.deleteByDescription(userId, name);
+                if (description) {
+                    return await HabitService.deleteByDescription(userId, description);
                 }
             } catch (e) {
                 // Pass through TRPC errors, wrap generic ones
@@ -211,7 +225,7 @@ export const habitsRouter = router({
 
             throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: 'Either a valid UUID or a Name is required.',
+                message: 'Either a valid UUID or a Description is required.',
             });
         }),
 
@@ -220,10 +234,8 @@ export const habitsRouter = router({
         .input(z.object({
             uuid: z.string().uuid(),
             data: z.object({
-                name: z.string().optional(),
-                desc: z.string().optional(),
-                backdrop_url: z.string().optional(),
-                panic_image_id: z.string().uuid().optional(),
+                description: z.string().optional(),
+                status: z.enum(['active', 'completed', 'archived']).optional(),
             }),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -233,10 +245,10 @@ export const habitsRouter = router({
     // 4. Get User Habit (Text Match): /user/get/ 
     getHabitByDescription: protectedProcedure
         .input(z.object({
-            name: z.string(),
+            description: z.string(),
         }))
         .mutation(async ({ ctx, input }) => {
-            const match = await HabitService.findClosestMatch(ctx.user.id, input.name);
+            const match = await HabitService.findClosestMatch(ctx.user.id, input.description);
             
             if (!match) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'No similar habit found.' });
@@ -258,7 +270,7 @@ export const habitsRouter = router({
         .query(async ({ ctx, input }) => {
             const photoData = await HabitService.getPhoto(ctx.user.id, input.habitId);
             
-            if (!photoData || !photoData.backdrop_url) {
+            if (!photoData || !photoData.image_url) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Photo not found for this habit.' });
             }
             return photoData;

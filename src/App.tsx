@@ -62,6 +62,7 @@ function App() {
       console.log("SUCCESS")
     }
   })
+  
   const handleLogout = async () => {
     console.log('Logout functionality removed')
   }

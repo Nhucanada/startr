@@ -242,6 +242,12 @@ export default function HabitTrackerContent({
     },
   })
 
+  const uncompleteHabitMutation = trpc.habits.uncompleteHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
+
   // Transform backend habits to frontend Task format
   const tasks: Task[] = (habits ?? []).map((habit) => ({
     id: habit.id,
@@ -285,7 +291,7 @@ export default function HabitTrackerContent({
         }
         return next
       })
-      console.error('Failed to toggle habit completion:', err)
+      console.error('Failed to mark habit as completed:', err)
     }
   }
 
@@ -384,28 +390,10 @@ export default function HabitTrackerContent({
     onOpenCreateTask()
   }
 
-<<<<<<< HEAD
   const handleCardClick = () => {
     if (holdCompletedRef.current) {
       holdCompletedRef.current = false
       return
-=======
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task)
-  }
-
-  const handleCloseDetails = () => {
-    setSelectedTask(null)
-  }
-
-  const handleDeleteTask = async () => {
-    if (!selectedTask) return
-    try {
-      await uncompleteHabitMutation.mutateAsync({ uuid: selectedTask.id })
-      setSelectedTask(null)
-    } catch (err) {
-      console.error('Failed to delete task:', err)
->>>>>>> 15798b1 (styling)
     }
   }
 

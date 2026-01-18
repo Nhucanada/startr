@@ -27,7 +27,6 @@ interface SwipeablePagesProps {
 
 export default function SwipeablePages({
   currentPage,
-  onPageChange,
   children,
 }: SwipeablePagesProps) {
   const currentIndex = PAGE_ORDER.indexOf(currentPage)

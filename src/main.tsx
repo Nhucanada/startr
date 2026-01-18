@@ -11,6 +11,9 @@ const theme = createTheme({
   palette: {
     mode: 'light',
   },
+  typography: {
+    fontFamily: '"Jersey 25", cursive',
+  },
 })
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -484,7 +484,7 @@ export default function HabitTrackerContent({
       {holdState === 'depleting' && <EmphasisOverlay />}
       <StreakContainer>
         <StreakTextContainer>
-          <StreakNumber>{5 + streak}</StreakNumber>
+          <StreakNumber>{1 + streak}</StreakNumber>
           <StreakLabel>day streak!</StreakLabel>
         </StreakTextContainer>
         <Box sx={{ width: '96px', height: '96px' }}>

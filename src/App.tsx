@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import SwipeablePages, { PageType } from './components/SwipeablePages.js'
 import NewPageContent from './components/NewPageContent.js'
@@ -8,6 +8,8 @@ import ButtonPageContent from './components/ButtonPageContent.js'
 import BottomNav from './components/BottomNav.js'
 import CameraPopup from './components/CameraPopup.js'
 import CreateTaskPopup from './components/CreateTaskPopup.js'
+import LoginOverlay from './components/LoginOverlay.js'
+import { authService } from './services/auth.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -51,11 +53,14 @@ function App() {
   const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | undefined>()
   const [aiResponse, setAiResponse] = useState<AIResponse | undefined>()
+  const [showLoginOverlay, setShowLoginOverlay] = useState(!authService.isAuthenticated())
   const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
   const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
   const handleLogout = async () => {
-    console.log('Logout functionality removed')
+    await authService.logout()
+    setCurrentPage('home')
+    setShowLoginOverlay(true)
   }
 
   const handleNavigate = (page: PageType) => {
@@ -140,6 +145,14 @@ function App() {
 
   return (
     <>
+      {showLoginOverlay && (
+        <LoginOverlay
+          onLoginSuccess={() => {
+            setCurrentPage('home')
+            setTimeout(() => setShowLoginOverlay(false), 150)
+          }}
+        />
+      )}
       <AppContainer>
         <MobileFrame>
           <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>

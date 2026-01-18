@@ -9,6 +9,8 @@ import BottomNav from './components/BottomNav.js'
 import CameraPopup from './components/CameraPopup.js'
 import CreateTaskPopup from './components/CreateTaskPopup.js'
 
+import { trpc } from './utils/trpc.js'
+
 const AppContainer = styled(Box)({
   minHeight: '100vh',
   backgroundColor: '#1A1A1A',
@@ -55,11 +57,9 @@ function App() {
   const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
   // const users = trpc.user.getUser.useQuery()
-  const createUserMutation = trpc.user.createUser.useMutation({
+  const createUserMutation = trpc.habits.createHabit.useMutation({
     onSuccess: () => {
-      users.refetch()
-      setName('')
-      setEmail('')
+      console.log("SUCCESS")
     }
   })
   const handleLogout = async () => {

@@ -4,6 +4,8 @@ import { router, publicProcedure, protectedProcedure } from './trpc-init.ts';
 // Import the singleton you defined
 import { supabase } from '../lib/supabase.ts'; 
 
+import { GeminiService } from '../lib/gemini.ts';
+
 /**
  * Mock Service Layer (AI)
  * Returns dummy data so you can test the DB flow immediately.
@@ -12,6 +14,10 @@ import { supabase } from '../lib/supabase.ts';
 const AIService = {
     generateHabitPlan: async (desc: string) => {
         // SIMULATION: Call Gemini
+        const response = await GeminiService.getInstance().ai.models.generateContent({
+            model: GeminiService.MODELS.GENERAL, // Uses 'gemini-3-flash-preview'
+            contents: '',
+        });
         return {
             title: desc,
             frequency: "daily",

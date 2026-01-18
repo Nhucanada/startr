@@ -1,4 +1,4 @@
-import { router, publicProcedure } from './trpc-init'; // Assuming context type is exported here
+import { router, publicProcedure } from './trpc-init.ts'; // Assuming context type is exported here
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 

@@ -47,6 +47,7 @@ class GeminiService {
     }
     return GeminiService.instance;
   }
+
 }
 
 // Export the singleton instance for direct use in tRPC routers

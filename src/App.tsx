@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Box, Button } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import ExitToAppIcon from '@mui/icons-material/ExitToApp'
@@ -60,6 +60,7 @@ function App() {
   const [aiResponse, setAiResponse] = useState<AIResponsePayload | null>(null)
   const [showLoginOverlay, setShowLoginOverlay] = useState(!authService.isAuthenticated())
   const [emphasisActive, setEmphasisActive] = useState(false)
+  const resetPanicModeRef = useRef<(() => void) | null>(null)
 
   const utils = trpc.useUtils()
 
@@ -85,6 +86,10 @@ function App() {
 
   const handleCloseCameraPopup = () => {
     setShowCameraPopup(false)
+    // Reset panic mode when camera popup closes
+    if (resetPanicModeRef.current) {
+      resetPanicModeRef.current()
+    }
   }
 
   const handleOpenCreateTask = () => {
@@ -147,6 +152,7 @@ function App() {
               onOpenCreateTask={handleOpenCreateTask}
               onPanic={handleButtonClick}
               onEmphasisChange={setEmphasisActive}
+              resetPanicModeRef={resetPanicModeRef}
             />
             <ButtonPageContent onButtonClick={handleButtonClick} />
           </SwipeablePages>

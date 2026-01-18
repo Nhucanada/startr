@@ -200,12 +200,14 @@ interface HabitTrackerContentProps {
   onOpenCreateTask: () => void
   onPanic: () => void
   onEmphasisChange?: (active: boolean) => void
+  resetPanicModeRef?: React.MutableRefObject<(() => void) | null>
 }
 
 export default function HabitTrackerContent({
   onOpenCreateTask,
   onPanic,
   onEmphasisChange,
+  resetPanicModeRef,
 }: HabitTrackerContentProps) {
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
@@ -305,6 +307,8 @@ export default function HabitTrackerContent({
       holdIntervalRef.current = null
     }
     holdStartRef.current = null
+    panicTriggeredRef.current = false
+    holdCompletedRef.current = false
     setHoldProgress(0)
     setHoldTaskId(null)
     setHoldState('idle')
@@ -314,6 +318,17 @@ export default function HabitTrackerContent({
 
   const startHold = (task: Task) => {
     if (task.completed) return
+
+    // Prevent starting new holds on different tasks during depletion/panic
+    if ((holdState === 'depleting' || holdState === 'panic') && holdTaskId !== task.id) {
+      return
+    }
+
+    // Don't allow new holds during panic mode at all
+    if (holdState === 'panic') {
+      return
+    }
+
     panicTriggeredRef.current = false
     holdCompletedRef.current = false
     setHoldState('holding')
@@ -339,8 +354,12 @@ export default function HabitTrackerContent({
   }
 
   const endHold = () => {
+    // Only allow ending hold if we're in the 'holding' state
+    // Once depleting starts, user cannot escape
     if (holdState !== 'holding' || !holdTaskId) {
-      resetHold()
+      if (holdState === 'idle') {
+        resetHold()
+      }
       return
     }
 
@@ -370,12 +389,17 @@ export default function HabitTrackerContent({
         if (!panicTriggeredRef.current) {
           panicTriggeredRef.current = true
           setHoldState('panic')
-          setHoldProgress(0)
-          setHoldTaskId(null)
           onPanic()
         }
       }
     }, 50)
+  }
+
+  const handleMouseLeave = () => {
+    // Only end hold if we're in 'holding' state, not 'depleting' or 'panic'
+    if (holdState === 'holding') {
+      endHold()
+    }
   }
 
   useEffect(() => {
@@ -391,6 +415,13 @@ export default function HabitTrackerContent({
     const active = holdState === 'depleting' || holdState === 'panic'
     onEmphasisChange(active)
   }, [holdState, onEmphasisChange])
+
+  // Expose reset function for external use (e.g., when camera popup closes)
+  useEffect(() => {
+    if (resetPanicModeRef) {
+      resetPanicModeRef.current = resetHold
+    }
+  }, [resetPanicModeRef])
 
   // Check if all tasks are completed and increment streak
   useEffect(() => {
@@ -472,7 +503,7 @@ export default function HabitTrackerContent({
               onClick={handleCardClick}
                 onMouseDown={() => startHold(task)}
                 onMouseUp={endHold}
-                onMouseLeave={endHold}
+                onMouseLeave={handleMouseLeave}
                 onTouchStart={() => startHold(task)}
                 onTouchEnd={endHold}
                 onTouchCancel={endHold}

@@ -210,6 +210,18 @@ export default function HabitTrackerContent({
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+
+  // Streak tracking with localStorage persistence
+  const [streak, setStreak] = useState<number>(() => {
+    const saved = localStorage.getItem('habit_streak')
+    return saved ? parseInt(saved, 10) : 0
+  })
+  const [streakIncrementedToday, setStreakIncrementedToday] = useState<boolean>(() => {
+    const lastIncrement = localStorage.getItem('streak_last_increment')
+    if (!lastIncrement) return false
+    const today = new Date().toDateString()
+    return lastIncrement === today
+  })
   const [holdTaskId, setHoldTaskId] = useState<string | null>(null)
   const [holdProgress, setHoldProgress] = useState(0)
   const [holdState, setHoldState] = useState<'idle' | 'holding' | 'depleting' | 'panic'>('idle')
@@ -380,6 +392,24 @@ export default function HabitTrackerContent({
     onEmphasisChange(active)
   }, [holdState, onEmphasisChange])
 
+  // Check if all tasks are completed and increment streak
+  useEffect(() => {
+    // Only check if we have tasks and haven't already incremented today
+    if (tasks.length === 0 || streakIncrementedToday) return
+
+    const allCompleted = tasks.every((task) => task.completed)
+
+    if (allCompleted) {
+      const newStreak = streak + 1
+      setStreak(newStreak)
+      setStreakIncrementedToday(true)
+
+      // Persist to localStorage
+      localStorage.setItem('habit_streak', newStreak.toString())
+      localStorage.setItem('streak_last_increment', new Date().toDateString())
+    }
+  }, [tasks, streakIncrementedToday, streak])
+
   const handleOpenCreateTask = () => {
     onOpenCreateTask()
   }
@@ -423,7 +453,7 @@ export default function HabitTrackerContent({
       {holdState === 'depleting' && <EmphasisOverlay />}
       <StreakContainer>
         <StreakTextContainer>
-          <StreakNumber>67</StreakNumber>
+          <StreakNumber>{5 + streak}</StreakNumber>
           <StreakLabel>day streak!</StreakLabel>
         </StreakTextContainer>
         <Box sx={{ width: '96px', height: '96px' }}>

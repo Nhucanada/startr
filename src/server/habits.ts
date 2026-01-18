@@ -421,6 +421,33 @@ const HabitService = {
         if (error) throw error;
         return data;
     },
+
+    uncompleteHabit: async (supabase: SupabaseClient, userId: string, habitId: string) => {
+        // Ensure the habit belongs to the user before deleting completion
+        const { data: habit, error: habitError } = await supabase
+            .from('habits')
+            .select('id')
+            .eq('id', habitId)
+            .eq('user_id', userId)
+            .single();
+
+        if (habitError || !habit) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Habit not found or unauthorized' });
+        }
+
+        // Delete the most recent completion for today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { error } = await supabase
+            .from('habit_completions')
+            .delete()
+            .eq('habit_id', habitId)
+            .gte('completed_at', today.toISOString());
+
+        if (error) throw error;
+        return { success: true };
+    },
 };
 
 // --- Router Definition ---
@@ -559,5 +586,14 @@ export const habitsRouter = router({
         }))
         .mutation(async ({ ctx, input }) => {
             return await HabitService.completeHabit(ctx.supabase, ctx.user.id, input.habitId);
+        }),
+
+    // 8. Uncomplete: /habits/uncomplete/
+    uncompleteHabit: protectedProcedure
+        .input(z.object({
+            habitId: z.string().uuid(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return await HabitService.uncompleteHabit(ctx.supabase, ctx.user.id, input.habitId);
         }),
 });

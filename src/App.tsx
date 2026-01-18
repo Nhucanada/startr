@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Box } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import SwipeablePages, { PageType } from './components/SwipeablePages.js'
 import NewPageContent from './components/NewPageContent.js'
@@ -53,6 +53,10 @@ function App() {
   const [aiResponse, setAiResponse] = useState<AIResponse | undefined>()
   const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
   const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
+
+  const handleLogout = async () => {
+    console.log('Logout functionality removed')
+  }
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page)
@@ -127,10 +131,12 @@ function App() {
     console.log('Creating task from left page:', { title, description })
   }
 
+
   const handleCloseCreateTask = () => {
     setShowCreateTaskPopup(false)
     createTaskCallbackRef.current = null
   }
+
 
   return (
     <>
@@ -142,9 +148,10 @@ function App() {
               aiResponse={aiResponse}
               onToggleTask={handleToggleSelectedTask}
               onCreateTask={handleCreateTaskFromLeftPage}
+              onAiSubmit={handleAiSubmit}
             />
             <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} onSelectTask={handleSelectTask} />
-            <ButtonPageContent onButtonClick={handleButtonClick} />
+            <ButtonPageContent onButtonClick={handleButtonClick} onLogout={handleLogout} />
           </SwipeablePages>
           <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
         </MobileFrame>
@@ -161,6 +168,7 @@ function App() {
           onAiSubmit={handleAiSubmit}
         />
       )}
+
     </>
   )
 }

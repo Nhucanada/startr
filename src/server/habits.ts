@@ -447,7 +447,7 @@ export const habitsRouter = router({
                 console.log(input.name)
 
                 // Step 2 (Mocked AI): Generate Image
-                const generatedImage = await AIService.generateHabitImage({
+                const generatedImageUrl = await AIService.generateHabitImage({
                     plan: habitPlan,
                     style: input.style
                 });
@@ -457,9 +457,11 @@ export const habitsRouter = router({
                     ctx.supabase,
                     userId,
                     habitPlan,
-                    generatedImage,
+                    generatedImageUrl,
                     input.desc
                 );
+
+                console.log(generatedImageUrl)
 
                 return newHabit;
             } catch (error) {

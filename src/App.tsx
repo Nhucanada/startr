@@ -31,14 +31,39 @@ const MobileFrame = styled(Box)({
   position: 'relative',
 })
 
+interface Task {
+  id: string
+  title: string
+  description?: string
+  completed: boolean
+  streak: number
+}
+
+interface AIResponse {
+  prompt: string
+  response: string
+  suggestions: string[]
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
   const [showCameraPopup, setShowCameraPopup] = useState(false)
   const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
-  const createTaskCallbackRef = useRef<((title: string) => void) | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>()
+  const [aiResponse, setAiResponse] = useState<AIResponse | undefined>()
+  const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
+  const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page)
+
+    // Reset state when leaving the 'new' page, but wait for animation to complete
+    if (currentPage === 'new' && page !== 'new') {
+      setTimeout(() => {
+        setSelectedTask(undefined)
+        setAiResponse(undefined)
+      }, 300) // Match the 0.3s animation duration
+    }
   }
 
   const handleButtonClick = () => {
@@ -49,15 +74,57 @@ function App() {
     setShowCameraPopup(false)
   }
 
-  const handleOpenCreateTask = (callback: (title: string) => void) => {
+  const handleOpenCreateTask = (callback: (title: string, description?: string) => void) => {
     createTaskCallbackRef.current = callback
     setShowCreateTaskPopup(true)
   }
 
-  const handleCreateTask = (title: string) => {
-    if (createTaskCallbackRef.current) {
-      createTaskCallbackRef.current(title)
+  const handleSelectTask = (task: Task, toggleCallback: (taskId: string) => void) => {
+    setSelectedTask(task)
+    setAiResponse(undefined) // Clear AI response when selecting a task
+    toggleTaskCallbackRef.current = toggleCallback
+    setCurrentPage('new')
+  }
+
+  const handleAiSubmit = (prompt: string) => {
+    // Generate mock AI response for demonstration
+    const mockResponse: AIResponse = {
+      prompt,
+      response: `Based on your goal: "${prompt}", I recommend breaking this down into smaller, manageable habits that you can build consistently over time. Here are some suggestions:`,
+      suggestions: [
+        'Start with 5 minutes daily',
+        'Set a specific time each day',
+        'Track your progress weekly',
+        'Create a reward system',
+        'Find an accountability partner'
+      ]
     }
+
+    setAiResponse(mockResponse)
+    setSelectedTask(undefined) // Clear task selection when showing AI response
+    setCurrentPage('new')
+  }
+
+  const handleToggleSelectedTask = (taskId: string) => {
+    if (toggleTaskCallbackRef.current) {
+      toggleTaskCallbackRef.current(taskId)
+      // Update the selected task's completion status
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(prev => prev ? { ...prev, completed: !prev.completed } : undefined)
+      }
+    }
+  }
+
+  const handleCreateTask = (title: string, description?: string) => {
+    if (createTaskCallbackRef.current) {
+      createTaskCallbackRef.current(title, description)
+    }
+  }
+
+  const handleCreateTaskFromLeftPage = (title: string, description?: string) => {
+    // This will be handled by the HabitTrackerContent component directly
+    // For now, we'll just log it - this could be improved to use a shared task state
+    console.log('Creating task from left page:', { title, description })
   }
 
   const handleCloseCreateTask = () => {
@@ -70,8 +137,13 @@ function App() {
       <AppContainer>
         <MobileFrame>
           <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>
-            <NewPageContent />
-            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} />
+            <NewPageContent
+              selectedTask={selectedTask}
+              aiResponse={aiResponse}
+              onToggleTask={handleToggleSelectedTask}
+              onCreateTask={handleCreateTaskFromLeftPage}
+            />
+            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} onSelectTask={handleSelectTask} />
             <ButtonPageContent onButtonClick={handleButtonClick} />
           </SwipeablePages>
           <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
@@ -86,6 +158,7 @@ function App() {
         <CreateTaskPopup
           onClose={handleCloseCreateTask}
           onCreateTask={handleCreateTask}
+          onAiSubmit={handleAiSubmit}
         />
       )}
     </>

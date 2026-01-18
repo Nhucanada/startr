@@ -101,21 +101,17 @@ const SubmitButton = styled(Button)({
   },
 })
 
-const PlaceholderText = styled(Typography)({
-  color: '#8A8A8A',
-  fontStyle: 'italic',
-  textAlign: 'center',
-  marginTop: '20px',
-})
 
 interface CreateTaskPopupProps {
   onClose: () => void
-  onCreateTask: (title: string) => void
+  onCreateTask: (title: string, description?: string) => void
+  onAiSubmit: (prompt: string) => void
 }
 
-export default function CreateTaskPopup({ onClose, onCreateTask }: CreateTaskPopupProps) {
+export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: CreateTaskPopupProps) {
   const [currentTab, setCurrentTab] = useState(0)
   const [manualTitle, setManualTitle] = useState('')
+  const [manualDescription, setManualDescription] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -124,17 +120,14 @@ export default function CreateTaskPopup({ onClose, onCreateTask }: CreateTaskPop
 
   const handleManualSubmit = () => {
     if (manualTitle.trim()) {
-      onCreateTask(manualTitle.trim())
+      onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
       onClose()
     }
   }
 
   const handleAiSubmit = () => {
     if (aiPrompt.trim()) {
-      // Placeholder for AI functionality
-      console.log('AI prompt:', aiPrompt)
-      // For now, create a task with AI prefix
-      onCreateTask(`AI: ${aiPrompt.trim()}`)
+      onAiSubmit(aiPrompt.trim())
       onClose()
     }
   }
@@ -176,6 +169,17 @@ export default function CreateTaskPopup({ onClose, onCreateTask }: CreateTaskPop
                 variant="outlined"
               />
 
+              <StyledTextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Description (Optional)"
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                placeholder="Add more details about this task..."
+                variant="outlined"
+              />
+
               <SubmitButton
                 onClick={handleManualSubmit}
                 disabled={!manualTitle.trim()}
@@ -197,17 +201,12 @@ export default function CreateTaskPopup({ onClose, onCreateTask }: CreateTaskPop
                 variant="outlined"
               />
 
-              <PlaceholderText>
-                🤖 AI integration coming soon!
-                <br />
-                For now, this will create a task with your description.
-              </PlaceholderText>
 
               <SubmitButton
                 onClick={handleAiSubmit}
                 disabled={!aiPrompt.trim()}
               >
-                Send to AI
+                Get AI Suggestions
               </SubmitButton>
             </>
           )}

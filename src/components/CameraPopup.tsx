@@ -163,19 +163,14 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
   const startCountdown = () => {
     setCountdown(3)
 
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          clearInterval(countdownInterval)
-          setTimeout(() => {
-            takePicture()
-            setCountdown(null)
-          }, 1000)
-          return 0
-        }
-        return prev ? prev - 1 : null
-      })
-    }, 1000)
+    // Schedule each countdown step explicitly
+    setTimeout(() => setCountdown(2), 1000)
+    setTimeout(() => setCountdown(1), 2000)
+    setTimeout(() => setCountdown(0), 3000) // Show camera icon
+    setTimeout(() => {
+      takePicture()
+      setCountdown(null)
+    }, 4000) // Take picture after showing camera icon
   }
 
   const takePicture = () => {

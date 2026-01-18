@@ -122,6 +122,10 @@ const HabitText = styled(Typography)({
   whiteSpace: 'nowrap',
   flex: 1,
   minWidth: 0,
+  cursor: 'pointer',
+  '&:hover': {
+    opacity: 0.8,
+  },
 })
 
 const TaskListContainer = styled(Box)({
@@ -171,16 +175,19 @@ const StyledAddButton = styled(IconButton)({
 interface Task {
   id: string
   title: string
+  description?: string
   completed: boolean
   streak: number
 }
 
 interface HabitTrackerContentProps {
-  onOpenCreateTask: (callback: (title: string) => void) => void
+  onOpenCreateTask: (callback: (title: string, description?: string) => void) => void
+  onSelectTask: (task: Task, toggleCallback: (taskId: string) => void) => void
 }
 
 export default function HabitTrackerContent({
   onOpenCreateTask,
+  onSelectTask,
 }: HabitTrackerContentProps) {
   const [tasks, setTasks] = useState<Task[]>([
     { id: '1', title: 'Make the bed', completed: false, streak: 5 },
@@ -191,10 +198,11 @@ export default function HabitTrackerContent({
     { id: '6', title: 'Write in journal', completed: false, streak: 0 }
   ])
 
-  const handleCreateTask = (title: string) => {
+  const handleCreateTask = (title: string, description?: string) => {
     const newTask: Task = {
       id: Date.now().toString(),
       title,
+      description,
       completed: false,
       streak: 0,
     }
@@ -211,6 +219,10 @@ export default function HabitTrackerContent({
 
   const handleOpenCreateTask = () => {
     onOpenCreateTask(handleCreateTask)
+  }
+
+  const handleTaskClick = (task: Task) => {
+    onSelectTask(task, handleToggleTask)
   }
 
   const completedCount = tasks.filter((task) => task.completed).length
@@ -259,7 +271,7 @@ export default function HabitTrackerContent({
         <ScrollableTaskList>
           {tasks.map((task) => (
             <HabitCard key={task.id}>
-              <HabitText>{task.title}</HabitText>
+              <HabitText onClick={() => handleTaskClick(task)}>{task.title}</HabitText>
               <TaskRightContainer>
                 <StreakCounter>
                   <TaskStreakText>{task.streak} 🔥</TaskStreakText>

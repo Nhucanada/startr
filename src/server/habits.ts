@@ -37,13 +37,14 @@ const AIService = {
  * Interacts directly with Supabase tables.
  */
 const HabitService = {
-    create: async (userId: string, planData: any, imageUrl: string) => { 
+    create: async (userId: string, planData: any, imageUrl: string, desc?: string) => { 
         const { data, error } = await supabase
             .from('habits')
             .insert({
                 user_id: userId,
                 name: planData.title || 'New Habit',
-                backdrop_url: imageUrl
+                backdrop_url: imageUrl,
+                desc: desc ?? null
             })
             .select()
             .single();
@@ -126,7 +127,7 @@ const HabitService = {
         // PERF: Explicitly selecting columns to EXCLUDE any heavy fields
         const { data, error } = await supabase
             .from('habits')
-            .select('id, user_id, name, backdrop_url, panic_image_id, created_at') 
+            .select('id, user_id, name, desc, backdrop_url, panic_image_id, created_at') 
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -155,6 +156,7 @@ export const habitsRouter = router({
     createHabit: protectedProcedure
         .input(z.object({
             name: z.string().min(1, "Name is required"),
+            desc: z.string().optional(),
             style: z.string().optional().default("minimalist"),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -171,7 +173,7 @@ export const habitsRouter = router({
                 });
 
                 // Step 3: Persist to Supabase
-                const newHabit = await HabitService.create(userId, habitPlan, generatedImage);
+                const newHabit = await HabitService.create(userId, habitPlan, generatedImage, input.desc);
 
                 return newHabit;
             } catch (error: any) {
@@ -219,6 +221,7 @@ export const habitsRouter = router({
             uuid: z.string().uuid(),
             data: z.object({
                 name: z.string().optional(),
+                desc: z.string().optional(),
                 backdrop_url: z.string().optional(),
                 panic_image_id: z.string().uuid().optional(),
             }),

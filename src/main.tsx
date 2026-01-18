@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { trpc } from './utils/trpc.js'
 import { trpcClient, queryClient } from './utils/trpcClient.js'
+import { authService } from './services/auth.js'
 
 const theme = createTheme({
   palette: {
@@ -15,6 +16,9 @@ const theme = createTheme({
     fontFamily: '"Jersey 25", cursive',
   },
 })
+
+// Initialize auth service on app start
+authService.init()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>

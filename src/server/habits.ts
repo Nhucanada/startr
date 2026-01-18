@@ -33,7 +33,7 @@ async function uploadToSupabase(buffer: Buffer, bucketName: string) {
     const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(fileName, buffer, {
-            contentType: 'image/jpeg',
+            contentType: 'image/png',
             upsert: false
         });
 

@@ -2,27 +2,7 @@ import { router, publicProcedure } from './trpc-init.ts'; // Assuming context ty
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
-import { createClient } from '@supabase/supabase-js';
-
-// Create backend-specific Supabase client with secret key
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY!;
-
-if (!supabaseUrl || !supabaseSecretKey) {
-    throw new Error('Missing backend Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseSecretKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-});
-
-// Debug environment variables
-console.log('🔧 Backend Environment Check:');
-console.log('SUPABASE_URL:', supabaseUrl);
-console.log('SUPABASE_SECRET_KEY exists:', !!supabaseSecretKey);
+import { supabase } from '../lib/supabase.ts';
 
 // Helper to handle the upload logic cleanly
 async function uploadToSupabase(buffer: Buffer, bucketName: string) {

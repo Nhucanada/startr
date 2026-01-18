@@ -16,38 +16,30 @@ const GradientContainer = styled(Box)({
 const StreakContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
+  justifyContent: 'space-between',
   marginBottom: '32px',
   flexShrink: 0,
+  padding: '24px',
+  backgroundColor: '#3D4175',
+  borderRadius: '20px',
 })
 
-const CircularProgressContainer = styled(Box)({
-  position: 'relative',
-  width: '180px',
-  height: '180px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-})
-
-const CircularProgressText = styled(Box)({
-  position: 'absolute',
+const StreakTextContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
+  alignItems: 'flex-start',
 })
 
-const ProgressNumber = styled(Typography)({
+const StreakNumber = styled(Typography)({
   color: '#FFFFFF',
-  fontSize: '48px',
-  fontWeight: '600',
+  fontSize: '64px',
+  fontWeight: '700',
   lineHeight: '1',
 })
 
-const ProgressLabel = styled(Typography)({
+const StreakLabel = styled(Typography)({
   color: '#FFFFFF',
-  fontSize: '14px',
+  fontSize: '18px',
   fontWeight: '400',
   opacity: 0.9,
   marginTop: '4px',
@@ -304,6 +296,8 @@ export default function HabitTrackerContent({
     setHoldProgress(0)
     setHoldTaskId(null)
     setHoldState('idle')
+    // Remove global listener if still attached
+    document.removeEventListener('mouseup', endHold)
   }
 
   const startHold = (task: Task) => {
@@ -397,8 +391,6 @@ export default function HabitTrackerContent({
     }
   }
 
-  const completedCount = tasks.filter((task) => task.completed).length
-
   // Loading state
   if (isLoading) {
     return (
@@ -430,41 +422,16 @@ export default function HabitTrackerContent({
     <GradientContainer>
       {holdState === 'depleting' && <EmphasisOverlay />}
       <StreakContainer>
-        <CircularProgressContainer>
-          <svg width="180" height="180" viewBox="0 0 180 180">
-            <defs>
-              <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#7FD4A3" />
-                <stop offset="100%" stopColor="#5BC4A8" />
-              </linearGradient>
-            </defs>
-            <circle
-              cx="90"
-              cy="90"
-              r="80"
-              fill="none"
-              stroke="#5B5F9E"
-              strokeWidth="10"
-            />
-            <circle
-              cx="90"
-              cy="90"
-              r="80"
-              fill="none"
-              stroke="url(#progressGradient)"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 80}
-              strokeDashoffset={2 * Math.PI * 80 * (1 - (tasks.length > 0 ? completedCount / tasks.length : 0))}
-              transform="rotate(-90 90 90)"
-              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
-            />
+        <StreakTextContainer>
+          <StreakNumber>67</StreakNumber>
+          <StreakLabel>day streak!</StreakLabel>
+        </StreakTextContainer>
+        <Box sx={{ width: '96px', height: '96px' }}>
+          <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M78 56C78 72.79 64.788 86 47.998 86C31.208 86 18 72.79 18 56C18 39.21 44.958 25.2 41.918 10C48 10 78 31.682 78 56Z" fill="#FF9600"/>
+            <path d="M34.5311 67.6405C34.5338 58.4669 48.0007 53.2175 48.0007 45C48.0007 45 61.4649 55.321 61.4649 67.6405C61.4649 74.4413 55.4398 79.96 47.998 79.96C40.5562 79.96 34.5284 74.444 34.5311 67.6405Z" fill="#FFC107"/>
           </svg>
-          <CircularProgressText>
-            <ProgressNumber>{completedCount}</ProgressNumber>
-            <ProgressLabel>tasks done!</ProgressLabel>
-          </CircularProgressText>
-        </CircularProgressContainer>
+        </Box>
       </StreakContainer>
 
       <TaskListContainer sx={{ position: 'relative', zIndex: 2 }}>

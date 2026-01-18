@@ -46,7 +46,13 @@ class AuthService {
   }
 
   async logout() {
-    await vanillaTrpcClient.user.logout.mutate()
+    this.stopTokenRefresh()
+    try {
+      await vanillaTrpcClient.user.logout.mutate()
+    } catch (error) {
+      // Server may return empty response, ignore parsing errors
+      console.warn('[AuthService] Logout server call failed:', error)
+    }
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
   }

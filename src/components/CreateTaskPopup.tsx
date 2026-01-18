@@ -116,13 +116,6 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
   const [aiPrompt, setAiPrompt] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const utils = trpc.useUtils()
-
-  const createHabitMutation = trpc.habits.createHabit.useMutation({
-    onSuccess: () => {
-      utils.habits.getUserHabits.invalidate()
-    },
-  })
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue)
@@ -132,8 +125,7 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
     if (manualTitle.trim()) {
       setIsSubmitting(true)
       try {
-        await createHabitMutation.mutateAsync({ description: manualTitle.trim() })
-        onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
+        await onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
         onClose()
       } catch (error) {
         console.error('Failed to create habit:', error)

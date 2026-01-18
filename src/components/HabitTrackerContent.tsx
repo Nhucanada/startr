@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Box, Typography, IconButton, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
@@ -192,6 +193,7 @@ export default function HabitTrackerContent({
 }: HabitTrackerContentProps) {
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
 
   // Fetch habits from backend - only when authenticated
   const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery(undefined, {
@@ -203,8 +205,7 @@ export default function HabitTrackerContent({
     console.error('[HabitTrackerContent] Failed to load habits:', error.message, error)
   }
 
-  // Mutation for updating habit status
-  const updateHabitMutation = trpc.habits.updateHabit.useMutation({
+  const completeHabitMutation = trpc.habits.completeHabit.useMutation({
     onSuccess: () => {
       utils.habits.getUserHabits.invalidate()
     },
@@ -213,9 +214,9 @@ export default function HabitTrackerContent({
   // Transform backend habits to frontend Task format
   const tasks: Task[] = (habits ?? []).map((habit) => ({
     id: habit.id,
-    title: habit.description,
-    description: undefined,
-    completed: habit.status === 'completed',
+    title: habit.name,
+    description: habit.desc ?? undefined,
+    completed: completedIds.has(habit.id),
     streak: 0, // Backend doesn't track streaks yet
   }))
 
@@ -229,14 +230,22 @@ export default function HabitTrackerContent({
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
-    const newStatus = task.completed ? 'active' : 'completed'
+    if (completedIds.has(taskId)) return
+    setCompletedIds((prev) => {
+      const next = new Set(prev)
+      next.add(taskId)
+      return next
+    })
+
     try {
-      await updateHabitMutation.mutateAsync({
-        uuid: taskId,
-        data: { status: newStatus as 'active' | 'completed' | 'archived' },
-      })
+      await completeHabitMutation.mutateAsync({ habitId: taskId })
     } catch (err) {
-      console.error('Failed to toggle task:', err)
+      setCompletedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(taskId)
+        return next
+      })
+      console.error('Failed to mark habit as completed:', err)
     }
   }
 

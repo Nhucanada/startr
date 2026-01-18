@@ -211,13 +211,6 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null)
 
-  const utils = trpc.useUtils()
-
-  const createHabitMutation = trpc.habits.createHabit.useMutation({
-    onSuccess: () => {
-      utils.habits.getUserHabits.invalidate()
-    },
-  })
 
   // Reset form fields when neither selectedTask nor aiResponse are present
   useEffect(() => {
@@ -241,8 +234,7 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
     if (taskTitle.trim() && onCreateTask) {
       setIsSubmitting(true)
       try {
-        await createHabitMutation.mutateAsync({ description: taskTitle.trim() })
-        onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
+        await onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
         setTaskTitle('')
         setTaskDescription('')
       } catch (error) {
@@ -265,8 +257,7 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
   const handleAddSuggestion = async (suggestion: string, index: number) => {
     setAddingSuggestion(index)
     try {
-      await createHabitMutation.mutateAsync({ description: suggestion })
-      onCreateTask?.(suggestion)
+      await onCreateTask?.(suggestion)
     } catch (error) {
       console.error('Failed to add suggestion as habit:', error)
     } finally {

@@ -135,7 +135,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
   const [currentTab, setCurrentTab] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   // Login form state
   const [loginForm, setLoginForm] = useState<LoginCredentials>({
@@ -158,7 +157,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue)
     setError('')
-    setSuccess('')
   }
 
   const handleLogin = async () => {
@@ -172,10 +170,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
 
     try {
       await authService.login(loginForm)
-      setSuccess('Login successful!')
-      setTimeout(() => {
-        onLoginSuccess()
-      }, 1000)
+      onLoginSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -205,10 +200,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
 
     try {
       await authService.register(registerForm)
-      setSuccess('Registration successful!')
-      setTimeout(() => {
-        onLoginSuccess()
-      }, 1000)
+      onLoginSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -227,11 +219,8 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
 
     try {
       await authService.resetPassword(resetEmail)
-      setSuccess('Password reset email sent!')
-      setTimeout(() => {
-        setShowPasswordReset(false)
-        setResetEmail('')
-      }, 2000)
+      setShowPasswordReset(false)
+      setResetEmail('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Password reset failed')
     } finally {
@@ -253,11 +242,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
               </Alert>
             )}
 
-            {success && (
-              <Alert severity="success" sx={{ mb: 2, backgroundColor: '#3A4A3A' }}>
-                {success}
-              </Alert>
-            )}
 
             <StyledTextField
               fullWidth
@@ -284,7 +268,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
               onClick={() => {
                 setShowPasswordReset(false)
                 setError('')
-                setSuccess('')
               }}
               disabled={loading}
             >
@@ -322,11 +305,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
             </Alert>
           )}
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 2, backgroundColor: '#3A4A3A' }}>
-              {success}
-            </Alert>
-          )}
 
           {currentTab === 0 ? (
             // Login Tab
@@ -361,7 +339,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
                 onClick={() => {
                   setShowPasswordReset(true)
                   setError('')
-                  setSuccess('')
                 }}
                 disabled={loading}
               >

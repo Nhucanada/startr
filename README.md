@@ -10,8 +10,17 @@ npm install
 ```
 
 2. Start the development server:
+
+For developing on the front-end:
+
 ```bash
-npm run dev
+npm run frontend-dev 
+```
+
+For developing on the back-end:
+
+```bash
+npm run backend-dev 
 ```
 
 3. Build for production:

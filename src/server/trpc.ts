@@ -2,6 +2,9 @@ import { initTRPC } from '@trpc/server'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase.js'
 
+export const createContext = () => ({});
+export type Context = Awaited<ReturnType<typeof createContext>>;
+
 const t = initTRPC.create()
 
 export const router = t.router

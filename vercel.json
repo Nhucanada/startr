@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/trpc/:path*",
+      "destination": "/api/index.ts"
+    }
+  ]
+}

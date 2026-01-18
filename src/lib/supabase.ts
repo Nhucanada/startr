@@ -1,14 +1,17 @@
 /* global process */
 import { createClient } from '@supabase/supabase-js'
 
-// Backend Supabase client - uses service role key for token validation
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
+// Support both backend (process.env) and frontend (import.meta.env) environments
+const supabaseUrl =
+    (typeof process !== 'undefined' && process.env?.SUPABASE_URL) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL)
 
-if (!supabaseUrl || !supabaseSecretKey) {
-    throw new Error('Missing Supabase environment variables (SUPABASE_URL, SUPABASE_SECRET_KEY)')
+const supabaseAnonKey =
+    (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY)
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables')
 }
 
-// Use service role key for server-side operations (token validation, admin access)
-export const supabase = createClient(supabaseUrl, supabaseSecretKey)
-
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)

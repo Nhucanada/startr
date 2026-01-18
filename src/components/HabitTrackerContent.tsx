@@ -5,6 +5,7 @@ import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 import { trpc } from '../utils/trpc.js'
 import { authService } from '../services/auth.js'
+import TaskDetailsPopup from './TaskDetailsPopup.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
@@ -192,6 +193,7 @@ export default function HabitTrackerContent({
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   // Fetch habits from backend - only when authenticated
   const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery(undefined, {
@@ -204,6 +206,12 @@ export default function HabitTrackerContent({
   }
 
   const completeHabitMutation = trpc.habits.completeHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
+
+  const deleteHabitMutation = trpc.habits.deleteHabit.useMutation({
     onSuccess: () => {
       utils.habits.getUserHabits.invalidate()
     },
@@ -243,6 +251,24 @@ export default function HabitTrackerContent({
 
   const handleOpenCreateTask = () => {
     onOpenCreateTask()
+  }
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task)
+  }
+
+  const handleCloseDetails = () => {
+    setSelectedTask(null)
+  }
+
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return
+    try {
+      await deleteHabitMutation.mutateAsync({ uuid: selectedTask.id })
+      setSelectedTask(null)
+    } catch (err) {
+      console.error('Failed to delete task:', err)
+    }
   }
 
   const completedCount = tasks.filter((task) => task.completed).length
@@ -317,7 +343,7 @@ export default function HabitTrackerContent({
       <TaskListContainer>
         <ScrollableTaskList>
           {tasks.map((task) => (
-            <HabitCard key={task.id}>
+            <HabitCard key={task.id} onClick={() => handleTaskClick(task)}>
               <HabitText>{task.title}</HabitText>
               <TaskRightContainer>
                 {task.streak > 0 && (
@@ -327,7 +353,10 @@ export default function HabitTrackerContent({
                 )}
                 <CheckboxContainer
                   checked={task.completed}
-                  onClick={() => handleToggleTask(task.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    handleToggleTask(task.id)
+                  }}
                 >
                   {task.completed && (
                     <CheckIcon sx={{ color: '#FFFFFF', fontSize: '20px' }} />
@@ -349,6 +378,14 @@ export default function HabitTrackerContent({
           </StyledAddButton>
         </AddButtonContainer>
       </TaskListContainer>
+      {selectedTask && (
+        <TaskDetailsPopup
+          title={selectedTask.title}
+          description={selectedTask.description}
+          onClose={handleCloseDetails}
+          onDelete={handleDeleteTask}
+        />
+      )}
     </GradientContainer>
   )
 }

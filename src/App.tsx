@@ -66,7 +66,7 @@ function App() {
       utils.habits.getUserHabits.invalidate()
     },
   })
-
+  
   const handleLogout = async () => {
     await authService.logout()
     setCurrentPage('home')

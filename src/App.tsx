@@ -59,6 +59,7 @@ function App() {
   const [showAiResponsePopup, setShowAiResponsePopup] = useState(false)
   const [aiResponse, setAiResponse] = useState<AIResponsePayload | null>(null)
   const [showLoginOverlay, setShowLoginOverlay] = useState(!authService.isAuthenticated())
+  const [emphasisActive, setEmphasisActive] = useState(false)
 
   const utils = trpc.useUtils()
 
@@ -130,15 +131,33 @@ function App() {
       <AppContainer>
         <MobileFrame>
           {!showLoginOverlay && (
-            <TopLogoutButton startIcon={<ExitToAppIcon />} onClick={handleLogout}>
+            <TopLogoutButton
+              startIcon={<ExitToAppIcon />}
+              onClick={handleLogout}
+              sx={{
+                pointerEvents: emphasisActive ? 'none' : 'auto',
+                opacity: emphasisActive ? 0.4 : 1,
+              }}
+            >
               Logout
             </TopLogoutButton>
           )}
           <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>
-            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} />
+            <HabitTrackerContent
+              onOpenCreateTask={handleOpenCreateTask}
+              onPanic={handleButtonClick}
+              onEmphasisChange={setEmphasisActive}
+            />
             <ButtonPageContent onButtonClick={handleButtonClick} />
           </SwipeablePages>
-          <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
+          <Box
+            sx={{
+              pointerEvents: emphasisActive ? 'none' : 'auto',
+              opacity: emphasisActive ? 0.4 : 1,
+            }}
+          >
+            <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
+          </Box>
         </MobileFrame>
       </AppContainer>
 

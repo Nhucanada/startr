@@ -1,11 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Box, Typography, IconButton, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
-import CheckIcon from '@mui/icons-material/Check'
 import { trpc } from '../utils/trpc.js'
 import { authService } from '../services/auth.js'
-import TaskDetailsPopup from './TaskDetailsPopup.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
@@ -64,20 +62,20 @@ const HabitCard = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
+  position: 'relative',
+  overflow: 'hidden',
+  cursor: 'pointer',
 })
 
-const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
-  width: '40px',
-  height: '40px',
-  borderRadius: '10px',
-  backgroundColor: checked ? '#7FD4A3' : 'rgba(255,255,255,0.2)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  transition: 'background-color 0.2s ease',
-  flexShrink: 0,
-}))
+const HabitCardProgress = styled(Box)({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  bottom: 0,
+  backgroundColor: '#7FD4A3',
+  transition: 'width 0.1s linear',
+  zIndex: 0,
+})
 
 const StreakCounter = styled(Box)({
   backgroundColor: 'rgba(255,255,255,0.1)',
@@ -104,6 +102,24 @@ const TaskRightContainer = styled(Box)({
   alignItems: 'center',
   gap: '6px',
   flexShrink: 0,
+  position: 'relative',
+  zIndex: 1,
+})
+
+const EmphasisOverlay = styled(Box)({
+  position: 'absolute',
+  inset: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  zIndex: 1,
+  pointerEvents: 'none',
+})
+
+const UrgencyText = styled(Typography)({
+  color: '#FF6B6B',
+  fontSize: '12px',
+  fontWeight: '600',
+  marginTop: '-8px',
+  marginBottom: '12px',
 })
 
 const EmptyHabitCard = styled(Box)({
@@ -126,6 +142,8 @@ const HabitText = styled(Typography)({
   flex: 1,
   minWidth: 0,
   cursor: 'pointer',
+  position: 'relative',
+  zIndex: 1,
   '&:hover': {
     opacity: 0.8,
   },
@@ -185,15 +203,25 @@ interface Task {
 
 interface HabitTrackerContentProps {
   onOpenCreateTask: () => void
+  onPanic: () => void
+  onEmphasisChange?: (active: boolean) => void
 }
 
 export default function HabitTrackerContent({
   onOpenCreateTask,
+  onPanic,
+  onEmphasisChange,
 }: HabitTrackerContentProps) {
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [holdTaskId, setHoldTaskId] = useState<string | null>(null)
+  const [holdProgress, setHoldProgress] = useState(0)
+  const [holdState, setHoldState] = useState<'idle' | 'holding' | 'depleting' | 'panic'>('idle')
+  const holdIntervalRef = useRef<number | null>(null)
+  const holdStartRef = useRef<number | null>(null)
+  const holdCompletedRef = useRef(false)
+  const panicTriggeredRef = useRef(false)
 
   // Fetch habits from backend - only when authenticated
   const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery(undefined, {
@@ -206,12 +234,6 @@ export default function HabitTrackerContent({
   }
 
   const completeHabitMutation = trpc.habits.completeHabit.useMutation({
-    onSuccess: () => {
-      utils.habits.getUserHabits.invalidate()
-    },
-  })
-
-  const deleteHabitMutation = trpc.habits.deleteHabit.useMutation({
     onSuccess: () => {
       utils.habits.getUserHabits.invalidate()
     },
@@ -249,25 +271,105 @@ export default function HabitTrackerContent({
     }
   }
 
+  const resetHold = () => {
+    if (holdIntervalRef.current) {
+      window.clearInterval(holdIntervalRef.current)
+      holdIntervalRef.current = null
+    }
+    holdStartRef.current = null
+    setHoldProgress(0)
+    setHoldTaskId(null)
+    setHoldState('idle')
+  }
+
+  const startHold = (task: Task) => {
+    if (task.completed) return
+    panicTriggeredRef.current = false
+    holdCompletedRef.current = false
+    setHoldState('holding')
+    setHoldTaskId(task.id)
+    setHoldProgress(0)
+    holdStartRef.current = Date.now()
+
+    if (holdIntervalRef.current) {
+      window.clearInterval(holdIntervalRef.current)
+    }
+
+    holdIntervalRef.current = window.setInterval(() => {
+      if (!holdStartRef.current) return
+      const elapsed = Date.now() - holdStartRef.current
+      const progress = Math.min(100, (elapsed / 5000) * 100)
+      setHoldProgress(progress)
+      if (progress >= 100) {
+        holdCompletedRef.current = true
+        handleToggleTask(task.id)
+        resetHold()
+      }
+    }, 50)
+  }
+
+  const endHold = () => {
+    if (holdState !== 'holding' || !holdTaskId) {
+      resetHold()
+      return
+    }
+
+    if (holdProgress >= 100) {
+      resetHold()
+      return
+    }
+
+    setHoldState('depleting')
+    const startProgress = holdProgress
+    const startTime = Date.now()
+    const duration = 2500
+
+    if (holdIntervalRef.current) {
+      window.clearInterval(holdIntervalRef.current)
+    }
+
+    holdIntervalRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.max(0, startProgress * (1 - elapsed / duration))
+      setHoldProgress(progress)
+      if (progress <= 0) {
+        if (holdIntervalRef.current) {
+          window.clearInterval(holdIntervalRef.current)
+          holdIntervalRef.current = null
+        }
+        if (!panicTriggeredRef.current) {
+          panicTriggeredRef.current = true
+          setHoldState('panic')
+          setHoldProgress(0)
+          setHoldTaskId(null)
+          onPanic()
+        }
+      }
+    }, 50)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (holdIntervalRef.current) {
+        window.clearInterval(holdIntervalRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!onEmphasisChange) return
+    const active = holdState === 'depleting' || holdState === 'panic'
+    onEmphasisChange(active)
+  }, [holdState, onEmphasisChange])
+
   const handleOpenCreateTask = () => {
     onOpenCreateTask()
   }
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task)
-  }
-
-  const handleCloseDetails = () => {
-    setSelectedTask(null)
-  }
-
-  const handleDeleteTask = async () => {
-    if (!selectedTask) return
-    try {
-      await deleteHabitMutation.mutateAsync({ uuid: selectedTask.id })
-      setSelectedTask(null)
-    } catch (err) {
-      console.error('Failed to delete task:', err)
+  const handleCardClick = () => {
+    if (holdCompletedRef.current) {
+      holdCompletedRef.current = false
+      return
     }
   }
 
@@ -302,6 +404,7 @@ export default function HabitTrackerContent({
 
   return (
     <GradientContainer>
+      {holdState === 'depleting' && <EmphasisOverlay />}
       <StreakContainer>
         <CircularProgressContainer>
           <svg width="180" height="180" viewBox="0 0 180 180">
@@ -340,32 +443,55 @@ export default function HabitTrackerContent({
         </CircularProgressContainer>
       </StreakContainer>
 
-      <TaskListContainer>
+      <TaskListContainer sx={{ position: 'relative', zIndex: 2 }}>
         <ScrollableTaskList>
           {tasks.map((task) => (
-            <HabitCard key={task.id} onClick={() => handleTaskClick(task)}>
-              <HabitText>{task.title}</HabitText>
-              <TaskRightContainer>
-                {task.streak > 0 && (
-                  <StreakCounter>
-                    <TaskStreakText>{task.streak} 🔥</TaskStreakText>
-                  </StreakCounter>
-                )}
-                <CheckboxContainer
-                  checked={task.completed}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    handleToggleTask(task.id)
+            <Box key={task.id} sx={{ position: 'relative' }}>
+              <HabitCard
+              onClick={handleCardClick}
+                onMouseDown={() => startHold(task)}
+                onMouseUp={endHold}
+                onMouseLeave={endHold}
+                onTouchStart={() => startHold(task)}
+                onTouchEnd={endHold}
+                onTouchCancel={endHold}
+                sx={{
+                  backgroundColor: task.completed ? '#7FD4A3' : '#5B5F9E',
+                  zIndex:
+                    (holdState === 'depleting' || holdState === 'panic') && holdTaskId === task.id
+                      ? 3
+                      : 'auto',
+                opacity:
+                  (holdState === 'depleting' || holdState === 'panic') &&
+                  holdTaskId &&
+                  holdTaskId !== task.id
+                    ? 0.4
+                    : 1,
+                }}
+              >
+                <HabitCardProgress
+                  sx={{
+                    width: task.completed
+                      ? '100%'
+                      : holdTaskId === task.id
+                        ? `${holdProgress}%`
+                        : '0%',
                   }}
-                >
-                  {task.completed && (
-                    <CheckIcon sx={{ color: '#FFFFFF', fontSize: '20px' }} />
+                />
+                <HabitText>{task.title}</HabitText>
+                <TaskRightContainer>
+                  {task.streak > 0 && (
+                    <StreakCounter>
+                      <TaskStreakText>{task.streak} 🔥</TaskStreakText>
+                    </StreakCounter>
                   )}
-                </CheckboxContainer>
-              </TaskRightContainer>
-            </HabitCard>
+                </TaskRightContainer>
+              </HabitCard>
+              {holdState === 'depleting' && holdTaskId === task.id && (
+                <UrgencyText>Hold to complete this task or face shame.</UrgencyText>
+              )}
+            </Box>
           ))}
-
           {tasks.length < 3 &&
             Array.from({ length: 3 - tasks.length }, (_, index) => (
               <EmptyHabitCard key={`empty-${index}`} />
@@ -378,14 +504,6 @@ export default function HabitTrackerContent({
           </StyledAddButton>
         </AddButtonContainer>
       </TaskListContainer>
-      {selectedTask && (
-        <TaskDetailsPopup
-          title={selectedTask.title}
-          description={selectedTask.description}
-          onClose={handleCloseDetails}
-          onDelete={handleDeleteTask}
-        />
-      )}
     </GradientContainer>
   )
 }

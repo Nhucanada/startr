@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Typography, IconButton, CircularProgress } from '@mui/material'
+import { Box, Typography, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import CloseIcon from '@mui/icons-material/Close'
+import { trpc } from '../utils/trpc'
 
 const PopupOverlay = styled(Box)({
   position: 'fixed',
@@ -28,16 +28,6 @@ const PopupContainer = styled(Box)({
   flexDirection: 'column',
   position: 'relative',
   boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-})
-
-const CloseButton = styled(IconButton)({
-  position: 'absolute',
-  top: '10px',
-  right: '10px',
-  color: '#FFFFFF',
-  '&:hover': {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
 })
 
 const VideoContainer = styled(Box)({
@@ -72,24 +62,20 @@ const ErrorText = styled(Typography)({
   marginTop: '20px',
 })
 
-const CountdownOverlay = styled(Box)({
+const CaptionOverlay = styled(Box)({
   position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: '12px',
+  left: '16px',
+  right: '16px',
+  bottom: '16px',
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  padding: '10px 12px',
+  borderRadius: '10px',
 })
 
-const CountdownText = styled(Typography)({
-  fontSize: '80px',
-  fontWeight: 'bold',
+const CaptionText = styled(Typography)({
+  fontSize: '16px',
+  fontWeight: '600',
   color: '#FFFFFF',
-  textShadow: '0 0 20px rgba(255, 255, 255, 0.8)',
 })
 
 const CaptureMessage = styled(Typography)({
@@ -97,6 +83,27 @@ const CaptureMessage = styled(Typography)({
   textAlign: 'center',
   marginTop: '20px',
   fontSize: '18px',
+})
+
+const UploadMessage = styled(Typography)({
+  color: '#2196F3',
+  textAlign: 'center',
+  marginTop: '20px',
+  fontSize: '16px',
+})
+
+const UploadSuccess = styled(Typography)({
+  color: '#4CAF50',
+  textAlign: 'center',
+  marginTop: '20px',
+  fontSize: '16px',
+})
+
+const UploadError = styled(Typography)({
+  color: '#FF6B6B',
+  textAlign: 'center',
+  marginTop: '20px',
+  fontSize: '16px',
 })
 
 const CapturedImage = styled('img')({
@@ -110,21 +117,37 @@ interface CameraPopupProps {
 }
 
 export default function CameraPopup({ onClose }: CameraPopupProps) {
+  const uploadImage = trpc.user.uploadImage.useMutation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const timeoutsRef = useRef<NodeJS.Timeout[]>([])
+  const startTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasCapturedRef = useRef(false)
+  const isCapturingRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [showCaption, setShowCaption] = useState(false)
   const [captured, setCaptured] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   const stopCamera = () => {
     // Clear any pending timeouts
     timeoutsRef.current.forEach(timeout => clearTimeout(timeout))
     timeoutsRef.current = []
+    if (startTimeoutRef.current) {
+      clearTimeout(startTimeoutRef.current)
+      startTimeoutRef.current = null
+    }
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
@@ -155,8 +178,19 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
           streamRef.current = mediaStream
           setLoading(false)
 
-          // Start countdown after camera loads
-          setTimeout(() => startCountdown(), 1000)
+          // Wait 3 seconds after camera loads, then capture
+          setShowCaption(true)
+          if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current)
+          }
+          startTimeoutRef.current = setTimeout(() => {
+            if (hasCapturedRef.current || isCapturingRef.current) {
+              setShowCaption(false)
+              return
+            }
+            takePicture()
+            setShowCaption(false)
+          }, 3000)
         }
       } catch (err) {
         console.error('Error accessing camera:', err)
@@ -173,33 +207,13 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
     }
   }, [])
 
-  const startCountdown = () => {
-    // Clear any existing timeouts first
-    timeoutsRef.current.forEach(timeout => clearTimeout(timeout))
-    timeoutsRef.current = []
-
-    setCountdown(3)
-
-    // Schedule each countdown step explicitly and store timeout IDs
-    const timeout1 = setTimeout(() => setCountdown(2), 1000)
-    const timeout2 = setTimeout(() => setCountdown(1), 2000)
-    const timeout3 = setTimeout(() => setCountdown(0), 3000) // Show camera icon
-    const timeout4 = setTimeout(() => {
-      if (!captured && !isCapturing) {
-        takePicture()
-        setCountdown(null)
-      }
-    }, 4000) // Take picture after showing camera icon
-
-    timeoutsRef.current = [timeout1, timeout2, timeout3, timeout4]
-  }
-
   const takePicture = () => {
     // Prevent multiple captures
-    if (isCapturing || captured) {
+    if (isCapturingRef.current || hasCapturedRef.current || isCapturing || captured) {
       console.log('Already capturing or captured, skipping...')
       return
     }
+    isCapturingRef.current = true
 
     if (videoRef.current && canvasRef.current) {
       setIsCapturing(true)
@@ -255,6 +269,9 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
                   } else {
                     console.error('❌ Photo not found after saving')
                   }
+
+                  // Upload to backend
+                  uploadToBackend(base64String)
                 } catch (saveError) {
                   console.error('Error saving photo:', saveError)
                 }
@@ -262,38 +279,82 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
               reader.onerror = () => {
                 console.error('Error reading blob')
                 setIsCapturing(false)
+                isCapturingRef.current = false
               }
               reader.readAsDataURL(blob)
 
               setCaptured(true)
+              hasCapturedRef.current = true
+              isCapturingRef.current = false
 
               // Clear any remaining timeouts after successful capture
               timeoutsRef.current.forEach(timeout => clearTimeout(timeout))
               timeoutsRef.current = []
+              if (startTimeoutRef.current) {
+                clearTimeout(startTimeoutRef.current)
+                startTimeoutRef.current = null
+              }
 
               // Stop camera immediately after capture
               stopCamera()
-
-              // Close popup after 2 seconds
-              setTimeout(() => {
-                onClose()
-              }, 2000)
             } catch (error) {
               console.error('Error processing photo:', error)
               setIsCapturing(false)
+              isCapturingRef.current = false
             }
           } else {
             console.error('Failed to create blob')
             setIsCapturing(false)
+            isCapturingRef.current = false
           }
         }, 'image/jpeg', 0.8)
       } else {
         console.error('Canvas context not available')
         setIsCapturing(false)
+        isCapturingRef.current = false
       }
     } else {
       console.error('Video or canvas not available')
       setIsCapturing(false)
+      isCapturingRef.current = false
+    }
+  }
+
+  const uploadToBackend = async (imageData: string) => {
+    try {
+      setIsUploading(true)
+      setUploadError('')
+
+      console.log('🔄 Starting image upload...')
+      console.log('📊 Image data length:', imageData.length)
+
+      const result = await uploadImage.mutateAsync({
+        image: imageData,
+        bucketName: 'panic_images'
+      })
+
+      console.log('📥 Upload result:', result)
+
+      if (result.success) {
+        setUploadSuccess(true)
+        console.log('✅ Image uploaded successfully:', result.url)
+
+        // Close popup after successful upload
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current)
+        }
+        closeTimeoutRef.current = setTimeout(() => {
+          onClose()
+        }, 2000)
+      } else {
+        console.error('❌ Upload failed - result not successful:', result)
+        setUploadError('Upload was not successful')
+      }
+    } catch (error) {
+      console.error('❌ Upload failed with error:', error)
+      setUploadError(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -305,10 +366,6 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
   return (
     <PopupOverlay onClick={handleClose}>
       <PopupContainer onClick={(e) => e.stopPropagation()}>
-        <CloseButton onClick={handleClose}>
-          <CloseIcon />
-        </CloseButton>
-
         <VideoContainer>
           {loading && (
             <LoadingContainer>
@@ -338,23 +395,35 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
             />
           )}
 
-          {countdown !== null && countdown > 0 && (
-            <CountdownOverlay>
-              <CountdownText>{countdown}</CountdownText>
-            </CountdownOverlay>
-          )}
-
-          {countdown === 0 && (
-            <CountdownOverlay>
-              <CountdownText>📸</CountdownText>
-            </CountdownOverlay>
+          {showCaption && (
+            <CaptionOverlay>
+              <CaptionText>Look at yourself in the mirror...</CaptionText>
+            </CaptionOverlay>
           )}
         </VideoContainer>
 
-        {captured && (
+        {captured && !isUploading && !uploadSuccess && !uploadError && (
           <CaptureMessage>
-            📸 Photo captured and saved to cache!
+            📸 Now lets see what you'll become...
           </CaptureMessage>
+        )}
+
+        {isUploading && (
+          <UploadMessage>
+            📤 Uploading your image...
+          </UploadMessage>
+        )}
+
+        {uploadSuccess && (
+          <UploadSuccess>
+            ✅ Upload complete! Closing...
+          </UploadSuccess>
+        )}
+
+        {uploadError && (
+          <UploadError>
+            ❌ {uploadError}
+          </UploadError>
         )}
 
         {/* Hidden canvas for photo capture */}

@@ -21,7 +21,7 @@ const supabase = createClient(supabaseUrl, supabaseSecretKey, {
 
 // Helper to handle the upload logic cleanly
 async function uploadToSupabase(buffer: Buffer, bucketName: string) {
-    const fileName = `panic-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+    const fileName = `private/panic-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
 
     const { error } = await supabase.storage
         .from(bucketName)

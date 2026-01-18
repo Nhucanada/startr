@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { Box, Typography, IconButton } from '@mui/material'
+import { Box, Typography, IconButton, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
+import { trpc } from '../utils/trpc.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
@@ -189,32 +189,46 @@ export default function HabitTrackerContent({
   onOpenCreateTask,
   onSelectTask,
 }: HabitTrackerContentProps) {
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: 'Make the bed', completed: false, streak: 5 },
-    { id: '2', title: 'Exercise for 30 minutes', completed: true, streak: 12 },
-    { id: '3', title: 'Read 10 pages', completed: false, streak: 3 },
-    { id: '4', title: 'Drink 8 glasses of water', completed: false, streak: 1 },
-    { id: '5', title: 'Meditate for 5 minutes', completed: true, streak: 8 },
-    { id: '6', title: 'Write in journal', completed: false, streak: 0 }
-  ])
+  const utils = trpc.useUtils()
+
+  // Fetch habits from backend
+  const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery()
+
+  // Mutation for updating habit status
+  const updateHabitMutation = trpc.habits.updateHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
+
+  // Transform backend habits to frontend Task format
+  const tasks: Task[] = (habits ?? []).map((habit) => ({
+    id: habit.id,
+    title: habit.description,
+    description: undefined,
+    completed: habit.status === 'completed',
+    streak: 0, // Backend doesn't track streaks yet
+  }))
 
   const handleCreateTask = (title: string, description?: string) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title,
-      description,
-      completed: false,
-      streak: 0,
-    }
-    setTasks([...tasks, newTask])
+    // This is now handled by App.tsx via the popup
+    // The local state is automatically updated via query invalidation
+    console.log('Task created via backend:', { title, description })
   }
 
-  const handleToggleTask = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    )
+  const handleToggleTask = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    const newStatus = task.completed ? 'active' : 'completed'
+    try {
+      await updateHabitMutation.mutateAsync({
+        uuid: taskId,
+        data: { status: newStatus as 'active' | 'completed' | 'archived' },
+      })
+    } catch (err) {
+      console.error('Failed to toggle task:', err)
+    }
   }
 
   const handleOpenCreateTask = () => {
@@ -226,6 +240,33 @@ export default function HabitTrackerContent({
   }
 
   const completedCount = tasks.filter((task) => task.completed).length
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <GradientContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <CircularProgress sx={{ color: '#7FD4A3' }} />
+        </Box>
+      </GradientContainer>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <GradientContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 2 }}>
+          <Typography sx={{ color: '#FFFFFF', textAlign: 'center' }}>
+            Failed to load habits
+          </Typography>
+          <Typography sx={{ color: '#FFFFFF', opacity: 0.7, fontSize: '14px', textAlign: 'center' }}>
+            Please try again later
+          </Typography>
+        </Box>
+      </GradientContainer>
+    )
+  }
 
   return (
     <GradientContainer>

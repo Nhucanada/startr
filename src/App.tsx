@@ -10,6 +10,7 @@ import CameraPopup from './components/CameraPopup.js'
 import CreateTaskPopup from './components/CreateTaskPopup.js'
 import LoginOverlay from './components/LoginOverlay.js'
 import { authService } from './services/auth.js'
+import { trpc } from './utils/trpc.js'
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -57,14 +58,14 @@ function App() {
   const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
   const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
-  // const users = trpc.user.getUser.useQuery()
-  const createUserMutation = trpc.user.createUser.useMutation({
+  const utils = trpc.useUtils()
+
+  const createHabitMutation = trpc.habits.createHabit.useMutation({
     onSuccess: () => {
-      users.refetch()
-      setName('')
-      setEmail('')
-    }
+      utils.habits.getUserHabits.invalidate()
+    },
   })
+
   const handleLogout = async () => {
     await authService.logout()
     setCurrentPage('home')
@@ -103,23 +104,42 @@ function App() {
     setCurrentPage('new')
   }
 
-  const handleAiSubmit = (prompt: string) => {
-    // Generate mock AI response for demonstration
-    const mockResponse: AIResponse = {
-      prompt,
-      response: `Based on your goal: "${prompt}", I recommend breaking this down into smaller, manageable habits that you can build consistently over time. Here are some suggestions:`,
-      suggestions: [
-        'Start with 5 minutes daily',
-        'Set a specific time each day',
-        'Track your progress weekly',
-        'Create a reward system',
-        'Find an accountability partner'
-      ]
-    }
+  const handleAiSubmit = async (prompt: string) => {
+    // Create the habit using the backend
+    try {
+      const result = await createHabitMutation.mutateAsync({ description: prompt })
 
-    setAiResponse(mockResponse)
-    setSelectedTask(undefined) // Clear task selection when showing AI response
-    setCurrentPage('new')
+      // Transform the backend response into AIResponse format for display
+      const plan = result.plan as { title?: string; frequency?: string; steps?: string[]; fun_fact?: string } | null
+      const aiResult: AIResponse = {
+        prompt,
+        response: plan?.fun_fact || `Great! I've created a habit plan for "${prompt}". Here are some steps to help you succeed:`,
+        suggestions: plan?.steps || [
+          'Start with 5 minutes daily',
+          'Set a specific time each day',
+          'Track your progress weekly'
+        ]
+      }
+
+      setAiResponse(aiResult)
+      setSelectedTask(undefined)
+      setCurrentPage('new')
+    } catch (error) {
+      console.error('Failed to create AI habit:', error)
+      // Fallback to mock response on error
+      const mockResponse: AIResponse = {
+        prompt,
+        response: `Based on your goal: "${prompt}", I recommend breaking this down into smaller, manageable habits:`,
+        suggestions: [
+          'Start with 5 minutes daily',
+          'Set a specific time each day',
+          'Track your progress weekly'
+        ]
+      }
+      setAiResponse(mockResponse)
+      setSelectedTask(undefined)
+      setCurrentPage('new')
+    }
   }
 
   const handleToggleSelectedTask = (taskId: string) => {
@@ -132,16 +152,24 @@ function App() {
     }
   }
 
-  const handleCreateTask = (title: string, description?: string) => {
-    if (createTaskCallbackRef.current) {
-      createTaskCallbackRef.current(title, description)
+  const handleCreateTask = async (title: string, _description?: string) => {
+    try {
+      await createHabitMutation.mutateAsync({ description: title })
+      // Also call the callback if it exists for local state update
+      if (createTaskCallbackRef.current) {
+        createTaskCallbackRef.current(title, _description)
+      }
+    } catch (error) {
+      console.error('Failed to create task:', error)
     }
   }
 
-  const handleCreateTaskFromLeftPage = (title: string, description?: string) => {
-    // This will be handled by the HabitTrackerContent component directly
-    // For now, we'll just log it - this could be improved to use a shared task state
-    console.log('Creating task from left page:', { title, description })
+  const handleCreateTaskFromLeftPage = async (title: string, _description?: string) => {
+    try {
+      await createHabitMutation.mutateAsync({ description: title })
+    } catch (error) {
+      console.error('Failed to create task from left page:', error)
+    }
   }
 
 

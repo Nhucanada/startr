@@ -6,7 +6,7 @@
   "scripts": {
     "frontend-dev": "vite",
     "frontend-preview": "vite preview",
-    "backend-dev": "ts-node src/server/server.ts",
+    "backend-dev": "tsx src/server/server.ts",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
@@ -26,13 +26,13 @@
     "express": "^5.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-swipeable": "^7.0.2",
     "trpc": "^0.10.4",
-    "ts-node": "^10.9.2",
+    "react-swipeable": "^7.0.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "tsx": "^4.19.0",
     "@types/express": "^5.0.6",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",

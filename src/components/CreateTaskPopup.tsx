@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Box, Typography, IconButton, TextField, Button, Tabs, Tab } from '@mui/material'
+import { Box, Typography, IconButton, TextField, Button, Tabs, Tab, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import EditIcon from '@mui/icons-material/Edit'
+import { trpc } from '../utils/trpc.js'
 
 const PopupOverlay = styled(Box)({
   position: 'fixed',
@@ -113,20 +114,37 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
   const [manualTitle, setManualTitle] = useState('')
   const [manualDescription, setManualDescription] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const utils = trpc.useUtils()
+
+  const createHabitMutation = trpc.habits.createHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue)
   }
 
-  const handleManualSubmit = () => {
+  const handleManualSubmit = async () => {
     if (manualTitle.trim()) {
-      onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
-      onClose()
+      setIsSubmitting(true)
+      try {
+        await createHabitMutation.mutateAsync({ description: manualTitle.trim() })
+        onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
+        onClose()
+      } catch (error) {
+        console.error('Failed to create habit:', error)
+        setIsSubmitting(false)
+      }
     }
   }
 
   const handleAiSubmit = () => {
     if (aiPrompt.trim()) {
+      setIsSubmitting(true)
       onAiSubmit(aiPrompt.trim())
       onClose()
     }
@@ -182,9 +200,9 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
 
               <SubmitButton
                 onClick={handleManualSubmit}
-                disabled={!manualTitle.trim()}
+                disabled={!manualTitle.trim() || isSubmitting}
               >
-                Create Task
+                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Create Task'}
               </SubmitButton>
             </>
           ) : (
@@ -204,9 +222,9 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
 
               <SubmitButton
                 onClick={handleAiSubmit}
-                disabled={!aiPrompt.trim()}
+                disabled={!aiPrompt.trim() || isSubmitting}
               >
-                Get AI Suggestions
+                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
               </SubmitButton>
             </>
           )}

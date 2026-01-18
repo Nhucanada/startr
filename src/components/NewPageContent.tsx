@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Box, Typography, IconButton, TextField, Button, Tabs, Tab } from '@mui/material'
+import React, { useState, useEffect } from 'react'
+import { Box, Typography, IconButton, TextField, Button, Tabs, Tab, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
+import { trpc } from '../utils/trpc.js'
 
 const Container = styled(Box)({
   height: '100%',
@@ -97,7 +98,7 @@ const AITitle = styled(Typography)({
   fontWeight: '600',
 })
 
-const AIResponse = styled(Typography)({
+const AIResponseText = styled(Typography)({
   color: '#FFFFFF',
   fontSize: '16px',
   fontWeight: '400',
@@ -207,6 +208,16 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDescription, setTaskDescription] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null)
+
+  const utils = trpc.useUtils()
+
+  const createHabitMutation = trpc.habits.createHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
 
   // Reset form fields when neither selectedTask nor aiResponse are present
   useEffect(() => {
@@ -226,18 +237,40 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
     setCurrentTab(newValue)
   }
 
-  const handleCreateTaskSubmit = () => {
+  const handleCreateTaskSubmit = async () => {
     if (taskTitle.trim() && onCreateTask) {
-      onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
-      setTaskTitle('')
-      setTaskDescription('')
+      setIsSubmitting(true)
+      try {
+        await createHabitMutation.mutateAsync({ description: taskTitle.trim() })
+        onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
+        setTaskTitle('')
+        setTaskDescription('')
+      } catch (error) {
+        console.error('Failed to create task:', error)
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
   const handleAiSubmit = () => {
     if (aiPrompt.trim() && onAiSubmit) {
+      setIsSubmitting(true)
       onAiSubmit(aiPrompt.trim())
       setAiPrompt('')
+      // isSubmitting will be reset when component rerenders with aiResponse
+    }
+  }
+
+  const handleAddSuggestion = async (suggestion: string, index: number) => {
+    setAddingSuggestion(index)
+    try {
+      await createHabitMutation.mutateAsync({ description: suggestion })
+      onCreateTask?.(suggestion)
+    } catch (error) {
+      console.error('Failed to add suggestion as habit:', error)
+    } finally {
+      setAddingSuggestion(null)
     }
   }
 
@@ -284,7 +317,7 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
           Your prompt: "{aiResponse!.prompt}"
         </Typography>
 
-        <AIResponse>{aiResponse!.response}</AIResponse>
+        <AIResponseText>{aiResponse!.response}</AIResponseText>
 
         <Box>
           <Typography sx={{ color: '#FFFFFF', fontSize: '16px', fontWeight: '500', mb: 2 }}>
@@ -298,9 +331,14 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
               <IconButton
                 size="small"
                 sx={{ color: '#7FD4A3' }}
-                onClick={() => onCreateTask?.(suggestion)}
+                onClick={() => handleAddSuggestion(suggestion, index)}
+                disabled={addingSuggestion !== null}
               >
-                <AddIcon fontSize="small" />
+                {addingSuggestion === index ? (
+                  <CircularProgress size={16} sx={{ color: '#7FD4A3' }} />
+                ) : (
+                  <AddIcon fontSize="small" />
+                )}
               </IconButton>
             </Box>
           ))}
@@ -355,9 +393,9 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
 
               <SubmitButton
                 onClick={handleCreateTaskSubmit}
-                disabled={!taskTitle.trim()}
+                disabled={!taskTitle.trim() || isSubmitting}
               >
-                Create Task
+                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Create Task'}
               </SubmitButton>
             </>
           ) : (
@@ -376,9 +414,9 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
 
               <SubmitButton
                 onClick={handleAiSubmit}
-                disabled={!aiPrompt.trim()}
+                disabled={!aiPrompt.trim() || isSubmitting}
               >
-                Get AI Suggestions
+                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
               </SubmitButton>
             </>
           )}

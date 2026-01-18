@@ -138,13 +138,12 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
 
   // Login form state
   const [loginForm, setLoginForm] = useState<LoginCredentials>({
-    username: '',
+    email: '',
     password: '',
   })
 
   // Register form state
   const [registerForm, setRegisterForm] = useState<RegisterCredentials>({
-    username: '',
     email: '',
     password: '',
     password_confirm: '',
@@ -160,7 +159,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
   }
 
   const handleLogin = async () => {
-    if (!loginForm.username.trim() || !loginForm.password) {
+    if (!loginForm.email.trim() || !loginForm.password) {
       setError('Please fill in all fields')
       return
     }
@@ -179,8 +178,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
   }
 
   const handleRegister = async () => {
-    if (!registerForm.username.trim() || !registerForm.email.trim() ||
-        !registerForm.password || !registerForm.password_confirm) {
+    if (!registerForm.email.trim() || !registerForm.password || !registerForm.password_confirm) {
       setError('Please fill in all fields')
       return
     }
@@ -311,9 +309,10 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
             <>
               <StyledTextField
                 fullWidth
-                label="Username"
-                value={loginForm.username}
-                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                type="email"
+                label="Email"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                 disabled={loading}
               />
 
@@ -329,7 +328,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
               <SubmitButton
                 fullWidth
                 onClick={handleLogin}
-                disabled={loading || !loginForm.username.trim() || !loginForm.password}
+                disabled={loading || !loginForm.email.trim() || !loginForm.password}
               >
                 {loading ? <CircularProgress size={20} /> : 'Login'}
               </SubmitButton>
@@ -348,14 +347,6 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
           ) : (
             // Register Tab
             <>
-              <StyledTextField
-                fullWidth
-                label="Username"
-                value={registerForm.username}
-                onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
-                disabled={loading}
-              />
-
               <StyledTextField
                 fullWidth
                 type="email"
@@ -386,7 +377,7 @@ export default function LoginOverlay({ onLoginSuccess }: LoginOverlayProps) {
               <SubmitButton
                 fullWidth
                 onClick={handleRegister}
-                disabled={loading || !registerForm.username.trim() || !registerForm.email.trim() ||
+                disabled={loading || !registerForm.email.trim() ||
                           !registerForm.password || !registerForm.password_confirm}
               >
                 {loading ? <CircularProgress size={20} /> : 'Create Account'}

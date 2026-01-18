@@ -12,8 +12,8 @@ function App() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
 
-  const users = trpc.getUsers.useQuery()
-  const createUserMutation = trpc.createUser.useMutation({
+  // const users = trpc.user.getUser.useQuery()
+  const createUserMutation = trpc.user.createUser.useMutation({
     onSuccess: () => {
       users.refetch()
       setName('')

@@ -7,7 +7,7 @@ import { authService } from '../services/auth.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
-  padding: '112px 32px 100px',
+  padding: '80px 32px 32px',
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
@@ -17,7 +17,8 @@ const StreakContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  marginBottom: '24px',
+  marginBottom: '32px',
+  flexShrink: 0,
 })
 
 const CircularProgressContainer = styled(Box)({
@@ -57,7 +58,7 @@ const HabitCard = styled(Box)({
   backgroundColor: '#5B5F9E',
   borderRadius: '20px',
   padding: '16px 12px',
-  marginBottom: '16px',
+  marginBottom: '20px',
   minHeight: '60px',
   display: 'flex',
   alignItems: 'center',
@@ -126,7 +127,7 @@ const EmptyHabitCard = styled(Box)({
   backgroundColor: '#4A4E7A',
   borderRadius: '20px',
   padding: '16px 12px',
-  marginBottom: '16px',
+  marginBottom: '20px',
   minHeight: '60px',
   opacity: 0.6,
 })
@@ -160,6 +161,7 @@ const ScrollableTaskList = styled(Box)({
   flex: 1,
   overflowY: 'auto',
   paddingRight: '8px',
+  paddingTop: '4px',
   marginRight: '-8px',
   '&::-webkit-scrollbar': {
     width: '4px',
@@ -180,7 +182,8 @@ const ScrollableTaskList = styled(Box)({
 const AddButtonContainer = styled(Box)({
   display: 'flex',
   justifyContent: 'center',
-  marginTop: '20px',
+  marginTop: '24px',
+  flexShrink: 0,
 })
 
 const StyledAddButton = styled(IconButton)({
@@ -252,19 +255,34 @@ export default function HabitTrackerContent({
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
 
-    if (completedIds.has(taskId)) return
+    const isCurrentlyCompleted = completedIds.has(taskId)
+
+    // Optimistic update
     setCompletedIds((prev) => {
       const next = new Set(prev)
-      next.add(taskId)
+      if (isCurrentlyCompleted) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
       return next
     })
 
     try {
-      await completeHabitMutation.mutateAsync({ habitId: taskId })
+      if (isCurrentlyCompleted) {
+        await uncompleteHabitMutation.mutateAsync({ habitId: taskId })
+      } else {
+        await completeHabitMutation.mutateAsync({ habitId: taskId })
+      }
     } catch (err) {
+      // Rollback on failure
       setCompletedIds((prev) => {
         const next = new Set(prev)
-        next.delete(taskId)
+        if (isCurrentlyCompleted) {
+          next.add(taskId)
+        } else {
+          next.delete(taskId)
+        }
         return next
       })
       console.error('Failed to mark habit as completed:', err)

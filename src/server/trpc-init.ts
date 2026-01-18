@@ -1,8 +1,9 @@
 import { initTRPC, TRPCError } from '@trpc/server'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Context creation - extracts auth token from request headers
 export const createContext = async (opts: { req: Request } | { req: { headers: { authorization?: string } } }) => {
@@ -64,18 +65,30 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 
     // Create an authenticated Supabase client with the user's JWT
     const authenticatedSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
+        },
+        accessToken: async () => token,
+    })
+
+    // Admin client bypasses RLS - use only after verifying ownership in code
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
         },
     })
+
+    console.log('[Auth] Created authenticated client for user:', user.id)
 
     return next({
         ctx: {
             ...ctx,
             user,
             supabase: authenticatedSupabase,
+            adminSupabase,
         },
     })
 })

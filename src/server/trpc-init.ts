@@ -18,6 +18,7 @@ export const createContext = async (opts: { req: Request } | { req: { headers: {
 
     return {
         authHeader,
+        supabase,
     }
 }
 

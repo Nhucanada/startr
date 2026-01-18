@@ -1,16 +1,58 @@
-import { useState } from 'react'
-import { Container, Typography, Box, Button, AppBar, Toolbar, TextField, CircularProgress, Alert } from '@mui/material'
+import { useState, useRef } from 'react'
+import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import { trpc } from './utils/trpc.js'
+import SwipeablePages, { PageType } from './components/SwipeablePages.js'
+import NewPageContent from './components/NewPageContent.js'
+import HabitTrackerContent from './components/HabitTrackerContent.js'
+import ButtonPageContent from './components/ButtonPageContent.js'
+import BottomNav from './components/BottomNav.js'
+import CameraPopup from './components/CameraPopup.js'
+import CreateTaskPopup from './components/CreateTaskPopup.js'
 
-const StyledContainer = styled(Container)(({ theme }) => ({
-  paddingTop: theme.spacing(4),
-  paddingBottom: theme.spacing(4),
-}))
+const AppContainer = styled(Box)({
+  minHeight: '100vh',
+  backgroundColor: '#1A1A1A',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: '20px',
+})
+
+const MobileFrame = styled(Box)({
+  width: '390px',
+  height: '844px',
+  maxWidth: '100vw',
+  maxHeight: '100vh',
+  aspectRatio: '9/16',
+  backgroundColor: '#1A1B4B',
+  borderRadius: '24px',
+  overflow: 'hidden',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  position: 'relative',
+})
+
+interface Task {
+  id: string
+  title: string
+  description?: string
+  completed: boolean
+  streak: number
+}
+
+interface AIResponse {
+  prompt: string
+  response: string
+  suggestions: string[]
+}
 
 function App() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [currentPage, setCurrentPage] = useState<PageType>('home')
+  const [showCameraPopup, setShowCameraPopup] = useState(false)
+  const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>()
+  const [aiResponse, setAiResponse] = useState<AIResponse | undefined>()
+  const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
+  const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
   // const users = trpc.user.getUser.useQuery()
   const createUserMutation = trpc.user.createUser.useMutation({
@@ -20,109 +62,121 @@ function App() {
       setEmail('')
     }
   })
+  const handleLogout = async () => {
+    console.log('Logout functionality removed')
+  }
 
-  const handleCreateUser = async () => {
-    if (name && email) {
-      createUserMutation.mutate({ name, email })
+  const handleNavigate = (page: PageType) => {
+    setCurrentPage(page)
+
+    // Reset state when leaving the 'new' page, but wait for animation to complete
+    if (currentPage === 'new' && page !== 'new') {
+      setTimeout(() => {
+        setSelectedTask(undefined)
+        setAiResponse(undefined)
+      }, 300) // Match the 0.3s animation duration
     }
   }
 
+  const handleButtonClick = () => {
+    setShowCameraPopup(true)
+  }
+
+  const handleCloseCameraPopup = () => {
+    setShowCameraPopup(false)
+  }
+
+  const handleOpenCreateTask = (callback: (title: string, description?: string) => void) => {
+    createTaskCallbackRef.current = callback
+    setShowCreateTaskPopup(true)
+  }
+
+  const handleSelectTask = (task: Task, toggleCallback: (taskId: string) => void) => {
+    setSelectedTask(task)
+    setAiResponse(undefined) // Clear AI response when selecting a task
+    toggleTaskCallbackRef.current = toggleCallback
+    setCurrentPage('new')
+  }
+
+  const handleAiSubmit = (prompt: string) => {
+    // Generate mock AI response for demonstration
+    const mockResponse: AIResponse = {
+      prompt,
+      response: `Based on your goal: "${prompt}", I recommend breaking this down into smaller, manageable habits that you can build consistently over time. Here are some suggestions:`,
+      suggestions: [
+        'Start with 5 minutes daily',
+        'Set a specific time each day',
+        'Track your progress weekly',
+        'Create a reward system',
+        'Find an accountability partner'
+      ]
+    }
+
+    setAiResponse(mockResponse)
+    setSelectedTask(undefined) // Clear task selection when showing AI response
+    setCurrentPage('new')
+  }
+
+  const handleToggleSelectedTask = (taskId: string) => {
+    if (toggleTaskCallbackRef.current) {
+      toggleTaskCallbackRef.current(taskId)
+      // Update the selected task's completion status
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(prev => prev ? { ...prev, completed: !prev.completed } : undefined)
+      }
+    }
+  }
+
+  const handleCreateTask = (title: string, description?: string) => {
+    if (createTaskCallbackRef.current) {
+      createTaskCallbackRef.current(title, description)
+    }
+  }
+
+  const handleCreateTaskFromLeftPage = (title: string, description?: string) => {
+    // This will be handled by the HabitTrackerContent component directly
+    // For now, we'll just log it - this could be improved to use a shared task state
+    console.log('Creating task from left page:', { title, description })
+  }
+
+
+  const handleCloseCreateTask = () => {
+    setShowCreateTaskPopup(false)
+    createTaskCallbackRef.current = null
+  }
+
+
   return (
     <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Startr with tRPC & Supabase
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <AppContainer>
+        <MobileFrame>
+          <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>
+            <NewPageContent
+              selectedTask={selectedTask}
+              aiResponse={aiResponse}
+              onToggleTask={handleToggleSelectedTask}
+              onCreateTask={handleCreateTaskFromLeftPage}
+              onAiSubmit={handleAiSubmit}
+            />
+            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} onSelectTask={handleSelectTask} />
+            <ButtonPageContent onButtonClick={handleButtonClick} onLogout={handleLogout} />
+          </SwipeablePages>
+          <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
+        </MobileFrame>
+      </AppContainer>
 
-      <StyledContainer maxWidth="md">
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            py: 4,
-          }}
-        >
-          <Typography variant="h2" component="h1" gutterBottom>
-            Welcome to Startr
-          </Typography>
+      {showCameraPopup && (
+        <CameraPopup onClose={handleCloseCameraPopup} />
+      )}
 
-          <Typography variant="h5" component="p" color="textSecondary" paragraph>
-            A modern React TypeScript application with tRPC and Supabase
-          </Typography>
+      {showCreateTaskPopup && (
+        <CreateTaskPopup
+          onClose={handleCloseCreateTask}
+          onCreateTask={handleCreateTask}
+          onAiSubmit={handleAiSubmit}
+        />
+      )}
 
-          <Box sx={{ mt: 4, width: '100%', maxWidth: 400 }}>
-            <Typography variant="h4" gutterBottom>
-              Create User
-            </Typography>
-
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Box>
-
-            <Button
-              variant="contained"
-              onClick={handleCreateUser}
-              disabled={createUserMutation.isPending || !name || !email}
-              sx={{ mb: 4 }}
-            >
-              {createUserMutation.isPending ? <CircularProgress size={24} /> : 'Create User'}
-            </Button>
-
-            {createUserMutation.error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {createUserMutation.error.message}
-              </Alert>
-            )}
-          </Box>
-
-          <Box sx={{ width: '100%', maxWidth: 600 }}>
-            <Typography variant="h4" gutterBottom>
-              Users
-            </Typography>
-
-            {users.isLoading && <CircularProgress />}
-            {users.error && (
-              <Alert severity="error">
-                {users.error.message}
-              </Alert>
-            )}
-            {users.data && (
-              <Box>
-                {users.data.length === 0 ? (
-                  <Typography color="textSecondary">
-                    No users found. Create one above!
-                  </Typography>
-                ) : (
-                  users.data.map((user: { id: string; name: string; email: string }) => (
-                    <Box key={user.id} sx={{ p: 2, border: 1, borderColor: 'divider', mb: 1, borderRadius: 1 }}>
-                      <Typography variant="h6">{user.name}</Typography>
-                      <Typography color="textSecondary">{user.email}</Typography>
-                    </Box>
-                  ))
-                )}
-              </Box>
-            )}
-          </Box>
-        </Box>
-      </StyledContainer>
     </>
   )
 }

@@ -1,10 +1,20 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { router, publicProcedure, protectedProcedure } from './trpc-init.ts';
-// Import the singleton you defined
-import { supabase } from '../lib/supabase.ts'; 
+import { SupabaseClient } from '@supabase/supabase-js';
+import { router, protectedProcedure } from './trpc-init.ts';
 
-import { GeminiService } from '../lib/gemini.ts';
+// Type definitions
+interface HabitPlan {
+    title: string;
+    frequency: string;
+    steps: string[];
+    fun_fact: string;
+}
+
+interface HabitUpdates {
+    description?: string;
+    status?: 'active' | 'completed' | 'archived';
+}
 
 /**
  * Mock Service Layer (AI)
@@ -13,11 +23,8 @@ import { GeminiService } from '../lib/gemini.ts';
  */
 const AIService = {
     generateHabitPlan: async (desc: string) => {
-        // SIMULATION: Call Gemini
-        const response = await GeminiService.getInstance().ai.models.generateContent({
-            model: GeminiService.MODELS.GENERAL, // Uses 'gemini-3-flash-preview'
-            contents: '',
-        });
+        // SIMULATION: Returns mock data for testing
+        // TODO: Replace with actual Gemini API call when ready
         return {
             title: desc,
             frequency: "daily",
@@ -25,19 +32,21 @@ const AIService = {
             fun_fact: "AI generated this plan."
         };
     },
-    generateHabitImage: async (habitContext: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    generateHabitImage: async (_habitContext: { plan: HabitPlan; style: string }) => {
         // SIMULATION: Call Image Gen API
         // Returning a placeholder image URL or Base64 string
-        return "https://placehold.co/600x400/png"; 
+        return "https://placehold.co/600x400/png";
     },
 };
 
 /**
  * Real Service Layer (Database)
  * Interacts directly with Supabase tables.
+ * All methods take a supabase client as the first parameter for RLS authentication.
  */
 const HabitService = {
-    create: async (userId: string, planData: any, imageUrl: string) => { 
+    create: async (supabase: SupabaseClient, userId: string, planData: HabitPlan, imageUrl: string) => {
         const { data, error } = await supabase
             .from('habits')
             .insert({
@@ -55,7 +64,7 @@ const HabitService = {
         return data;
     },
 
-    deleteById: async (userId: string, habitId: string) => {
+    deleteById: async (supabase: SupabaseClient, userId: string, habitId: string) => {
         const { data, error } = await supabase
             .from('habits')
             .delete()
@@ -70,7 +79,7 @@ const HabitService = {
         return { success: true, deleted: data[0] };
     },
 
-    deleteByDescription: async (userId: string, description: string) => { 
+    deleteByDescription: async (supabase: SupabaseClient, userId: string, description: string) => {
         // Hackathon logic: Delete the most recent one matching the description
         // 1. Find it
         const { data: found } = await supabase
@@ -96,7 +105,7 @@ const HabitService = {
         return { success: true, id: found.id };
     },
 
-    update: async (userId: string, habitId: string, updates: any) => { 
+    update: async (supabase: SupabaseClient, userId: string, habitId: string, updates: HabitUpdates) => {
         const { data, error } = await supabase
             .from('habits')
             .update(updates)
@@ -109,7 +118,7 @@ const HabitService = {
         return data;
     },
 
-    findClosestMatch: async (userId: string, name: string) => { 
+    findClosestMatch: async (supabase: SupabaseClient, userId: string, name: string) => {
         // Simple fuzzy search using ILIKE
         // For production, swap this with .textSearch() or pgvector
         const { data, error } = await supabase
@@ -121,11 +130,11 @@ const HabitService = {
             .single();
 
         // Don't throw error on null, just return null (handled in router)
-        if (error && error.code !== 'PGRST116') throw error; 
+        if (error && error.code !== 'PGRST116') throw error;
         return data;
     },
 
-    findAllByUser: async (userId: string) => {
+    findAllByUser: async (supabase: SupabaseClient, userId: string) => {
         console.log('[HabitService.findAllByUser] Querying for userId:', userId)
         // PERF: Explicitly selecting columns to EXCLUDE any heavy fields
         const { data, error } = await supabase
@@ -142,7 +151,7 @@ const HabitService = {
         return data;
     },
 
-    getBackdrop: async (userId: string, habitId: string) => { 
+    getBackdrop: async (supabase: SupabaseClient, userId: string, habitId: string) => {
         // Only fetch the image column
         const { data, error } = await supabase
             .from('habits')
@@ -152,10 +161,10 @@ const HabitService = {
             .single();
 
         if (error) throw error;
-        return data; // Returns { image_url: "..." }
+        return data; // Returns { backdrop_url: "..." }
     },
 
-    getPanicPhoto: async (userId: string, habitId: string) => { 
+    getPanicPhoto: async (supabase: SupabaseClient, userId: string, habitId: string) => {
         // Only fetch the image column
         const { data, error } = await supabase
             .from('habits')
@@ -165,7 +174,7 @@ const HabitService = {
             .single();
 
         if (error) throw error;
-        return data; // Returns { image_url: "..." }
+        return data; // Returns { backdrop_url: "..." }
     },
 };
 
@@ -191,11 +200,11 @@ export const habitsRouter = router({
                     style: input.style
                 });
 
-                // Step 3: Persist to Supabase
-                const newHabit = await HabitService.create(userId, habitPlan, generatedImage);
+                // Step 3: Persist to Supabase (using authenticated client)
+                const newHabit = await HabitService.create(ctx.supabase, userId, habitPlan, generatedImage);
 
                 return newHabit;
-            } catch (error: any) {
+            } catch (error) {
                 console.error("Create Habit Error:", error);
                 throw new TRPCError({
                     code: 'INTERNAL_SERVER_ERROR',
@@ -217,10 +226,10 @@ export const habitsRouter = router({
 
             try {
                 if (uuid) {
-                    return await HabitService.deleteById(userId, uuid);
-                } 
+                    return await HabitService.deleteById(ctx.supabase, userId, uuid);
+                }
                 if (description) {
-                    return await HabitService.deleteByDescription(userId, description);
+                    return await HabitService.deleteByDescription(ctx.supabase, userId, description);
                 }
             } catch (e) {
                 // Pass through TRPC errors, wrap generic ones
@@ -244,17 +253,17 @@ export const habitsRouter = router({
             }),
         }))
         .mutation(async ({ ctx, input }) => {
-            return await HabitService.update(ctx.user.id, input.uuid, input.data);
+            return await HabitService.update(ctx.supabase, ctx.user.id, input.uuid, input.data);
         }),
 
-    // 4. Get User Habit (Text Match): /user/get/ 
+    // 4. Get User Habit (Text Match): /user/get/
     getHabitByDescription: protectedProcedure
         .input(z.object({
             description: z.string(),
         }))
         .mutation(async ({ ctx, input }) => {
-            const match = await HabitService.findClosestMatch(ctx.user.id, input.description);
-            
+            const match = await HabitService.findClosestMatch(ctx.supabase, ctx.user.id, input.description);
+
             if (!match) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'No similar habit found.' });
             }
@@ -265,7 +274,7 @@ export const habitsRouter = router({
     getUserHabits: protectedProcedure
         .query(async ({ ctx }) => {
             console.log('[getUserHabits] Fetching habits for user:', ctx.user.id)
-            const result = await HabitService.findAllByUser(ctx.user.id);
+            const result = await HabitService.findAllByUser(ctx.supabase, ctx.user.id);
             console.log('[getUserHabits] Found', result?.length ?? 0, 'habits')
             return result;
         }),
@@ -276,9 +285,9 @@ export const habitsRouter = router({
             habitId: z.string().uuid(),
         }))
         .query(async ({ ctx, input }) => {
-            const photoData = await HabitService.getPhoto(ctx.user.id, input.habitId);
-            
-            if (!photoData || !photoData.image_url) {
+            const photoData = await HabitService.getBackdrop(ctx.supabase, ctx.user.id, input.habitId);
+
+            if (!photoData || !photoData.backdrop_url) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Photo not found for this habit.' });
             }
             return photoData;

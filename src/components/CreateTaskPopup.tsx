@@ -132,7 +132,7 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
     if (manualTitle.trim()) {
       setIsSubmitting(true)
       try {
-        await createHabitMutation.mutateAsync({ name: manualTitle.trim(), desc: manualDescription.trim() || undefined })
+        await createHabitMutation.mutateAsync({ description: manualTitle.trim() })
         onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
         onClose()
       } catch (error) {

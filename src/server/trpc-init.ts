@@ -1,11 +1,14 @@
 import { initTRPC, TRPCError } from '@trpc/server'
-import { supabase } from '../lib/supabase.ts'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.SUPABASE_URL!
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
 
 // Context creation - extracts auth token from request headers
 export const createContext = async (opts: { req: Request } | { req: { headers: { authorization?: string } } }) => {
     // Handle both Fetch API Request and Express-like request objects
     let authHeader: string | null = null
-    
+
     if ('headers' in opts.req) {
         if (opts.req.headers instanceof Headers) {
             // Fetch API Request
@@ -15,6 +18,9 @@ export const createContext = async (opts: { req: Request } | { req: { headers: {
             authHeader = opts.req.headers.authorization ?? null
         }
     }
+
+    // Create a base supabase client (unauthenticated)
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     return {
         authHeader,
@@ -29,9 +35,9 @@ const t = initTRPC.context<Context>().create()
 export const router = t.router
 export const publicProcedure = t.procedure
 
-// Protected procedure - validates JWT and adds user to context
+// Protected procedure - validates JWT and adds user to context with authenticated Supabase client
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
-    const { authHeader } = ctx
+    const { authHeader, supabase } = ctx
     console.log('[Auth] Checking authorization header:', authHeader ? 'present' : 'missing')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -56,10 +62,20 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
         })
     }
 
+    // Create an authenticated Supabase client with the user's JWT
+    const authenticatedSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    })
+
     return next({
         ctx: {
             ...ctx,
             user,
+            supabase: authenticatedSupabase,
         },
     })
 })

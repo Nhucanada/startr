@@ -110,6 +110,8 @@ function App() {
     try {
       const result = await createHabitMutation.mutateAsync({ name: prompt })
 
+      console.log(result)
+
       // Transform the backend response into AIResponse format for display
       const plan = result.plan as { title?: string; frequency?: string; steps?: string[]; fun_fact?: string } | null
       const aiResult: AIResponse = {

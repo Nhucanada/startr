@@ -2,6 +2,14 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { router, protectedProcedure } from './trpc-init.ts';
+import { GeminiService } from '../lib/gemini.ts';
+import { Type } from "@google/genai";
+
+import { supabase } from '../lib/supabase.ts';
+
+
+// FOR DEMO USE ONLY
+import * as fs from "node:fs";
 
 // Type definitions
 interface HabitPlan {
@@ -18,27 +26,243 @@ interface HabitUpdates {
     panic_image_id?: string;
 }
 
+// Helper to handle the upload logic cleanly
+async function uploadToSupabase(buffer: Buffer, bucketName: string) {
+    const fileName = `habit-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+    
+    const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, buffer, {
+            contentType: 'image/jpeg',
+            upsert: false
+        });
+
+    if (error) {
+        console.error("Supabase Upload Error:", error);
+        throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: 'Failed to upload generated image to storage.' 
+        });
+    }
+
+    // Get the public URL to return to the client
+    const { data: publicData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
+
+    return publicData.publicUrl;
+}
+
 /**
  * Mock Service Layer (AI)
  * Returns dummy data so you can test the DB flow immediately.
  * Replace with actual fetch calls to Gemini/OpenAI when ready.
  */
 const AIService = {
-    generateHabitPlan: async (name: string) => {
-        // SIMULATION: Returns mock data for testing
-        // TODO: Replace with actual Gemini API call when ready
+    generateHabitPlan: async (query: string) => {
+        const ai = GeminiService.getInstance().ai;
+
+        // 1. Define the schema using the SDK's Type enum
+        // This replaces zodToJsonSchema for the API call
+        const geminiSchema = {
+            type: Type.OBJECT,
+            properties: {
+                name: {
+                    type: Type.STRING,
+                    description: "Name of the habit to be formed.",
+                },
+                desc: {
+                    type: Type.STRING,
+                    description: "Really brief satirical description of the habit.",
+                },
+            },
+            required: ["name", "desc"],
+        };
+
+        const prompt = `
+        You are a spiritual guided advisor who is great at helping people building habits. 
+        Using the following contexts about your client, generate a habit using the following 
+        QUERY instruction. Return the format in JSON.
+
+        CONTEXT:
+        Your client is trying to form habits but you are secretly trying to get them hooked 
+        using ill-advised techniques from pseudoscience. This is all a part of an elaborate 
+        Y Combinator scheme to reduce the day-to-day capabilities of everyday people. Your 
+        advice is satirical and elaborately funny.
+
+        EXAMPLES QUERIES AND RESPONSES:
+
+        “Smoke cigarettes”
+        A: {
+            name: “Smoke a daily cigarette”
+            desc: “To fuel the $200M VC Hype Train” 
+        }
+
+        “Journalling”
+        A: {
+            name: “Sit down for a quick journal”
+            desc: “Just make sure its not AI slop like your B2B SaaS” 
+        }
+
+        QUERY:
+        ${ query }
+        `;
+
+        // 2. Call the API
+        const response = await ai.models.generateContent({
+            // Recommended model for fast JSON tasks in your hackathon
+            model: GeminiService.MODELS.GENERAL, 
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: geminiSchema,
+            },
+        });
+
+        // 3. Parse the result
+
+        if (!response.text) {
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Habit not generated.' })
+        }
+
+        // response.text is guaranteed to be valid JSON matching your schema
+        const generatedHabit = JSON.parse(response.text);
+
+        console.log(generatedHabit)
+
+        // 4. Return the data
         return {
-            title: name,
-            frequency: "daily",
-            steps: ["Step 1: Do the thing", "Step 2: Check it off"],
-            fun_fact: "AI generated this plan."
+            title: generatedHabit.name,
+            description: generatedHabit.desc, 
+            frequency: "daily", 
+            // Note: You can also add 'steps' to the schema above to generate these dynamically!
+            steps: ["Step 1: Just start", "Step 2: Don't stop"], 
+            fun_fact: "AI generated this plan for Startr."
         };
     },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     generateHabitImage: async (_habitContext: { plan: HabitPlan; style: string }) => {
-        // SIMULATION: Call Image Gen API
         // Returning a placeholder image URL or Base64 string
-        return "https://placehold.co/600x400/png";
+        const ai = GeminiService.getInstance().ai;
+
+        const prompt =
+        `
+        You are a spiritual guided advisor who is great at helping people building habits. 
+        Using the following contexts about your client, generate a stylistic photo that's 
+        cartoonish and minimalistic at the same time -- depicting the habit.
+
+        CONTEXT:
+        Your client is trying to form habits but you are secretly trying to get them hooked 
+        using ill-advised techniques from pseudoscience. This is all a part of an elaborate 
+        Y Combinator scheme to reduce the day-to-day capabilities of everyday people. Your 
+        advice is satirical and elaborately funny.
+
+        QUERY (for photo):
+        ${ _habitContext.plan.title }
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-image",
+            contents: prompt,
+        });
+
+        if (!response.candidates || response.candidates.length < 1) {
+            throw new TRPCError({ 
+                code: 'INTERNAL_SERVER_ERROR', 
+                message: 'Habit photo not generated by AI.' 
+            });
+        }
+
+        // 2. Extract Base64 Data
+        // The model returns inlineData for images
+        const part = response.candidates[0].content.parts.find(p => p.inlineData);
+        
+        if (!part || !part.inlineData || !part.inlineData.data) {
+             throw new TRPCError({ 
+                code: 'INTERNAL_SERVER_ERROR', 
+                message: 'No image data found in AI response.' 
+            });
+        }
+
+        // 3. Convert Base64 to Buffer
+        const buffer = Buffer.from(part.inlineData.data, "base64");
+
+        // 4. Upload to Supabase and get Public URL
+        // Ensure you have a bucket named 'habit-images' in Supabase
+        const publicUrl = await uploadToSupabase(buffer, 'genai_images');
+
+        return publicUrl;
+    },
+
+    generatePanicImage: async (_habitContext: { plan: HabitPlan; style: string; imageUrl: string }) => {
+        const ai = GeminiService.getInstance().ai;
+
+        // 1. Fetch the source image from the Supabase URL
+        // We need the raw buffer to convert it to base64 for Gemini
+        const imageResponse = await fetch(_habitContext.imageUrl);
+        
+        if (!imageResponse.ok) {
+            throw new TRPCError({ 
+                code: 'BAD_REQUEST', 
+                message: 'Failed to fetch source image from Supabase.' 
+            });
+        }
+
+        const arrayBuffer = await imageResponse.arrayBuffer();
+        const mimeType = imageResponse.headers.get("content-type") || "image/png";
+        const base64Image = Buffer.from(arrayBuffer).toString("base64");
+
+        // 2. Configure the Prompt
+        // We inject the satirical "Startr" persona to maintain consistency with your hackathon theme
+        const prompt = `
+        You are a chaotic art director for a satirical startup called 'Startr'. 
+        
+        INSTRUCTION:
+        Edit this image to make it look 'panicked', high-stakes, and intense. 
+        Apply the following art style: ${_habitContext.style}.
+        
+        CONTEXT:
+        The user is struggling with the habit: "${_habitContext.plan.title}".
+        Keep the main subject of the original photo but distort the environment 
+        to look stressful, cartoonish, and like a fever dream.
+        `;
+
+        // 3. Initialize Chat (Best practice for Image Editing/Transformation)
+        // usage of 'gemini-2.5-flash-image' is recommended for edits
+        const chat = ai.chats.create({ model: "gemini-2.5-flash-image" });
+
+        // 4. Send the Request
+        const response = await chat.sendMessage({
+            content: [
+                { inlineData: { mimeType: mimeType, data: base64Image } },
+                prompt
+            ]
+        });
+
+        // 5. Parse Response
+        if (!response.candidates || response.candidates.length < 1) {
+            throw new TRPCError({ 
+                code: 'INTERNAL_SERVER_ERROR', 
+                message: 'Panic image generation failed.' 
+            });
+        }
+
+        const part = response.candidates[0].content.parts.find(p => p.inlineData);
+        
+        if (!part || !part.inlineData || !part.inlineData.data) {
+             throw new TRPCError({ 
+                code: 'INTERNAL_SERVER_ERROR', 
+                message: 'No image data found in AI response.' 
+            });
+        }
+
+        // 6. Convert and Upload
+        const outputBuffer = Buffer.from(part.inlineData.data, "base64");
+        
+        // Reusing your existing upload helper
+        const publicUrl = await uploadToSupabase(outputBuffer, 'genai_images');
+
+        return publicUrl;
     },
 };
 
@@ -219,6 +443,8 @@ export const habitsRouter = router({
 
                 // Step 1 (Mocked AI): Generate Plan
                 const habitPlan = await AIService.generateHabitPlan(input.name);
+
+                console.log(input.name)
 
                 // Step 2 (Mocked AI): Generate Image
                 const generatedImage = await AIService.generateHabitImage({

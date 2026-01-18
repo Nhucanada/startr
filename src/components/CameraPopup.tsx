@@ -55,6 +55,7 @@ const Video = styled('video')({
   width: '100%',
   height: '100%',
   objectFit: 'cover',
+  transform: 'scaleX(-1)', // Mirror the video horizontally
 })
 
 const LoadingContainer = styled(Box)({

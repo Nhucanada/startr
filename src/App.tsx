@@ -24,7 +24,7 @@ const MobileFrame = styled(Box)({
   maxWidth: '100vw',
   maxHeight: '100vh',
   aspectRatio: '9/16',
-  background: 'linear-gradient(180deg, #4A4E7A 0%, #2E3267 50%, #1A1B4B 100%)',
+  backgroundColor: '#1A1B4B',
   borderRadius: '24px',
   overflow: 'hidden',
   boxShadow: '0 20px 60px rgba(0,0,0,0.3)',

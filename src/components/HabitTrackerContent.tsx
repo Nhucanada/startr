@@ -15,28 +15,42 @@ const GradientContainer = styled(Box)({
 const StreakContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: '5px',
+  justifyContent: 'center',
+  marginBottom: '24px',
 })
 
-const StreakText = styled(Typography)({
+const CircularProgressContainer = styled(Box)({
+  position: 'relative',
+  width: '180px',
+  height: '180px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+})
+
+const CircularProgressText = styled(Box)({
+  position: 'absolute',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+})
+
+const ProgressNumber = styled(Typography)({
   color: '#FFFFFF',
   fontSize: '48px',
-  fontWeight: '300',
-  lineHeight: '1.2',
+  fontWeight: '600',
+  lineHeight: '1',
 })
 
-const StreakSubText = styled(Typography)({
+const ProgressLabel = styled(Typography)({
   color: '#FFFFFF',
-  fontSize: '24px',
-  fontWeight: '300',
+  fontSize: '14px',
+  fontWeight: '400',
   opacity: 0.9,
+  marginTop: '4px',
 })
 
-const FireEmoji = styled('span')({
-  fontSize: '64px',
-  marginLeft: '20px',
-})
 
 const HabitCard = styled(Box)({
   backgroundColor: '#5B5F9E',
@@ -191,11 +205,41 @@ export default function HabitTrackerContent({
   return (
     <GradientContainer>
       <StreakContainer>
-        <Box>
-          <StreakText>{completedCount}</StreakText>
-          <StreakSubText>tasks completed!</StreakSubText>
-        </Box>
-        <FireEmoji>🔥</FireEmoji>
+        <CircularProgressContainer>
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            <defs>
+              <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7FD4A3" />
+                <stop offset="100%" stopColor="#5BC4A8" />
+              </linearGradient>
+            </defs>
+            <circle
+              cx="90"
+              cy="90"
+              r="80"
+              fill="none"
+              stroke="#5B5F9E"
+              strokeWidth="10"
+            />
+            <circle
+              cx="90"
+              cy="90"
+              r="80"
+              fill="none"
+              stroke="url(#progressGradient)"
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray={2 * Math.PI * 80}
+              strokeDashoffset={2 * Math.PI * 80 * (1 - (tasks.length > 0 ? completedCount / tasks.length : 0))}
+              transform="rotate(-90 90 90)"
+              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            />
+          </svg>
+          <CircularProgressText>
+            <ProgressNumber>{completedCount}</ProgressNumber>
+            <ProgressLabel>tasks done!</ProgressLabel>
+          </CircularProgressText>
+        </CircularProgressContainer>
       </StreakContainer>
 
       <TaskListContainer>

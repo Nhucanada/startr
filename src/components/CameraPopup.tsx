@@ -325,19 +325,13 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
       setIsUploading(true)
       setUploadError('')
 
-      console.log('🔄 Starting image upload...')
-      console.log('📊 Image data length:', imageData.length)
-
       const result = await uploadImage.mutateAsync({
         image: imageData,
         bucketName: 'panic_images'
       })
 
-      console.log('📥 Upload result:', result)
-
       if (result.success) {
         setUploadSuccess(true)
-        console.log('✅ Image uploaded successfully:', result.url)
 
         // Close popup after successful upload
         if (closeTimeoutRef.current) {
@@ -347,11 +341,10 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
           onClose()
         }, 2000)
       } else {
-        console.error('❌ Upload failed - result not successful:', result)
         setUploadError('Upload was not successful')
       }
     } catch (error) {
-      console.error('❌ Upload failed with error:', error)
+      console.error('Upload failed with error:', error)
       setUploadError(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUploading(false)

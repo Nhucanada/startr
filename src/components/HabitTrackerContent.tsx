@@ -242,6 +242,12 @@ export default function HabitTrackerContent({
     },
   })
 
+  const uncompleteHabitMutation = trpc.habits.uncompleteHabit.useMutation({
+    onSuccess: () => {
+      utils.habits.getUserHabits.invalidate()
+    },
+  })
+
   // Transform backend habits to frontend Task format
   const tasks: Task[] = (habits ?? []).map((habit) => ({
     id: habit.id,

@@ -19,27 +19,11 @@ const supabase = createClient(supabaseUrl, supabaseSecretKey, {
     }
 });
 
-// Debug environment variables
-console.log('🔧 Backend Environment Check:');
-console.log('SUPABASE_URL:', supabaseUrl);
-console.log('SUPABASE_SECRET_KEY exists:', !!supabaseSecretKey);
-
 // Helper to handle the upload logic cleanly
 async function uploadToSupabase(buffer: Buffer, bucketName: string) {
     const fileName = `panic-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
 
-    console.log(`📤 Uploading to bucket: ${bucketName}, file: ${fileName}`);
-    console.log(`📊 Buffer size: ${buffer.length} bytes`);
-
-    // First, list available buckets for debugging
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    if (listError) {
-        console.error('❌ Error listing buckets:', listError);
-    } else {
-        console.log('📂 Available buckets:', buckets.map(b => b.name));
-    }
-
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
         .from(bucketName)
         .upload(fileName, buffer, {
             contentType: 'image/jpeg',
@@ -54,14 +38,10 @@ async function uploadToSupabase(buffer: Buffer, bucketName: string) {
         });
     }
 
-    console.log("✅ Supabase upload successful:", data);
-
     // Get the public URL to return to the client
     const { data: publicData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(fileName);
-
-    console.log("🔗 Public URL generated:", publicData.publicUrl);
 
     return publicData.publicUrl;
 }
@@ -76,7 +56,7 @@ export const userRouter = router({
             name: z.string().optional(),
           })
       )
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
           const { data, error } = await supabase.auth.signUp({
               email: input.email,
               password: input.password,
@@ -105,7 +85,7 @@ export const userRouter = router({
         password: z.string(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: input.email,
         password: input.password,
@@ -122,7 +102,7 @@ export const userRouter = router({
     }),
 
   // 3. Logout: /auth/logout
-  logout: publicProcedure.mutation(async ({ ctx }) => {
+  logout: publicProcedure.mutation(async () => {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -138,7 +118,7 @@ export const userRouter = router({
   // 4. Token (Refresh): /auth/token
   token: publicProcedure
     .input(z.object({ refreshToken: z.string() }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       const { data, error } = await supabase.auth.refreshSession({
         refresh_token: input.refreshToken,
       });
@@ -154,9 +134,9 @@ export const userRouter = router({
     }),
 
   // 5. User (Get Current): /auth/user
-  // Note: This relies on the session/token being passed in the headers 
+  // Note: This relies on the session/token being passed in the headers
   // and forwarded to the Supabase client in the Context.
-  user: publicProcedure.query(async ({ ctx }) => {
+  user: publicProcedure.query(async () => {
     const {
       data: { user },
       error,
@@ -177,7 +157,7 @@ export const userRouter = router({
   password: router({
     reset: publicProcedure
       .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         const { error } = await supabase.auth.resetPasswordForEmail(
           input.email,
           {
@@ -204,30 +184,21 @@ export const userRouter = router({
       bucketName: z.string().default('panic_images')
     }))
     .mutation(async ({ input }) => {
-      console.log('🎯 Upload endpoint called');
-      console.log('🪣 Bucket name:', input.bucketName);
-      console.log('📷 Image data preview:', input.image.substring(0, 50) + '...');
-
       try {
         // Convert base64 to buffer
         const base64Data = input.image.replace(/^data:image\/[a-z]+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
 
-        console.log('🔄 Converted to buffer, size:', buffer.length);
-
         // Upload to Supabase
         const publicUrl = await uploadToSupabase(buffer, input.bucketName);
 
-        const result = {
+        return {
           success: true,
           url: publicUrl,
           message: 'Image uploaded successfully'
         };
-
-        console.log('🎉 Upload endpoint success:', result);
-        return result;
       } catch (error) {
-        console.error('❌ Upload endpoint error:', error);
+        console.error('Upload endpoint error:', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: `Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`

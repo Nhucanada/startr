@@ -282,7 +282,7 @@ export const habitsRouter = router({
         }),
 
     // 2. Delete: /habits/delete/
-    uncompleteHabit: protectedProcedure
+    deleteHabit: protectedProcedure
         .input(z.object({
             uuid: z.string().uuid().optional(),
             name: z.string().optional(),

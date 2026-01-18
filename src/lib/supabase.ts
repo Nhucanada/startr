@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Support both backend (process.env) and frontend (import.meta.env) environments
+const supabaseUrl = 
+    (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || 
+    import.meta.env.VITE_SUPABASE_URL
+
+const supabaseAnonKey = 
+    (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || 
+    import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+    throw new Error('Missing Supabase environment variables')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

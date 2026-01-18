@@ -65,6 +65,7 @@ function App() {
       console.log("SUCCESS")
     }
   })
+  
   const handleLogout = async () => {
     await authService.logout()
     setCurrentPage('home')

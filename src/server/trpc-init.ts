@@ -32,8 +32,10 @@ export const publicProcedure = t.procedure
 // Protected procedure - validates JWT and adds user to context
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     const { authHeader } = ctx
+    console.log('[Auth] Checking authorization header:', authHeader ? 'present' : 'missing')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('[Auth] Missing or invalid authorization header')
         throw new TRPCError({
             code: 'UNAUTHORIZED',
             message: 'Missing or invalid authorization header',
@@ -44,8 +46,10 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 
     // Verify the JWT token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token)
+    console.log('[Auth] Token validation result:', error ? `error: ${error.message}` : 'success', user ? `userId: ${user.id}` : 'no user')
 
     if (error || !user) {
+        console.error('[Auth] Token validation failed:', error?.message || 'no user returned')
         throw new TRPCError({
             code: 'UNAUTHORIZED',
             message: 'Invalid or expired token',

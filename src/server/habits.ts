@@ -123,15 +123,20 @@ const HabitService = {
         return data;
     },
 
-    findAllByUser: async (userId: string) => { 
+    findAllByUser: async (userId: string) => {
+        console.log('[HabitService.findAllByUser] Querying for userId:', userId)
         // PERF: Explicitly selecting columns to EXCLUDE any heavy fields
         const { data, error } = await supabase
             .from('habits')
-            .select('id, user_id, name, desc, backdrop_url, panic_image_id, created_at') 
+            .select('id, user_id, name, desc, backdrop_url, panic_image_id, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('[HabitService.findAllByUser] Supabase error:', error)
+            throw error;
+        }
+        console.log('[HabitService.findAllByUser] Query successful, found', data?.length ?? 0, 'habits')
         return data;
     },
 
@@ -247,7 +252,10 @@ export const habitsRouter = router({
     // 5. Get User Habits (List): /user/get
     getUserHabits: protectedProcedure
         .query(async ({ ctx }) => {
-            return await HabitService.findAllByUser(ctx.user.id);
+            console.log('[getUserHabits] Fetching habits for user:', ctx.user.id)
+            const result = await HabitService.findAllByUser(ctx.user.id);
+            console.log('[getUserHabits] Found', result?.length ?? 0, 'habits')
+            return result;
         }),
 
     // 6. Photos: /photos/get/

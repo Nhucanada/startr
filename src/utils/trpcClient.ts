@@ -16,6 +16,7 @@ export const trpcClient = trpc.createClient({
       url: '/api/',
       headers() {
         const token = localStorage.getItem('auth_token')
+        console.log('[trpcClient] Auth token:', token ? 'present' : 'missing')
         return token ? { Authorization: `Bearer ${token}` } : {}
       },
     }),

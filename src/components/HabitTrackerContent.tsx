@@ -194,6 +194,11 @@ export default function HabitTrackerContent({
   // Fetch habits from backend
   const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery()
 
+  // Debug logging for habit loading errors
+  if (error) {
+    console.error('[HabitTrackerContent] Failed to load habits:', error.message, error)
+  }
+
   // Mutation for updating habit status
   const updateHabitMutation = trpc.habits.updateHabit.useMutation({
     onSuccess: () => {

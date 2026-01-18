@@ -1,9 +1,9 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure } from './trpc-init.ts';
 import { z } from 'zod';
 
 export const userRouter = router({
   getUser: publicProcedure
-    .input(z.string())  // user uuid
+    .input(z.string())
     .query((opts) => {
       return { id: opts.input, name: 'John Doe' };
     }),
@@ -11,7 +11,6 @@ export const userRouter = router({
   createUser: publicProcedure
     .input(z.object({ name: z.string() }))
     .mutation((opts) => {
-      // Database logic here
       return { success: true };
     }),
 });

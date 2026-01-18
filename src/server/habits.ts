@@ -1,4 +1,4 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure } from './trpc-init.ts';
 import { z } from 'zod';
 
 export const habitsRouter = router({

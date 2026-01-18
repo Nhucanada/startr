@@ -1,17 +1,8 @@
-import { initTRPC } from '@trpc/server'
-import { z } from 'zod'
-import { supabase } from '../lib/supabase.js'
+import { router } from './trpc-init.ts'
+import { userRouter } from './user.ts'
+import { habitsRouter } from './habits.ts'
 
-import { userRouter } from './user.js';
-import { habitsRouter } from './habits.js';
-
-export const createContext = () => ({});
-export type Context = Awaited<ReturnType<typeof createContext>>;
-
-const t = initTRPC.create()
-
-export const router = t.router
-export const publicProcedure = t.procedure
+export { createContext } from './trpc-init.ts'
 
 export const appRouter = router({
   user: userRouter,

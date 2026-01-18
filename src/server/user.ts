@@ -1,4 +1,4 @@
-import { router, publicProcedure } from './trpc-init.ts'; // Assuming context type is exported here
+import { router, publicProcedure, protectedProcedure } from './trpc-init.ts'; // Assuming context type is exported here
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
@@ -178,7 +178,7 @@ export const userRouter = router({
   }),
 
   // 7. Upload Image: /upload/image
-  uploadImage: publicProcedure
+  uploadImage: protectedProcedure
     .input(z.object({
       image: z.string(), // Base64 image data
       bucketName: z.string().default('panic_images')

@@ -596,4 +596,68 @@ export const habitsRouter = router({
         .mutation(async ({ ctx, input }) => {
             return await HabitService.uncompleteHabit(ctx.supabase, ctx.user.id, input.habitId);
         }),
+
+    failHabit: protectedProcedure
+        .input(z.object({
+            habitId: z.string(),
+            imageUrl: z.string(),
+            bucketName: z.string().default('genai_images')
+
+        }))
+        .mutation(async ({ ctx, input }) => {
+            // FINISH THIS FUNCTION USING AIService.generatePanicImage
+            const { habitId, imageUrl } = input;
+            const userId = ctx.user.id;
+
+            // 1. Fetch Habit Context
+            // We need the name of the habit (e.g., "Quit Smoking") so the AI 
+            // knows what the "Panic" is about.
+            const { data: habit, error } = await ctx.supabase
+                .from('habits')
+                .select('name, desc')
+                .eq('id', habitId)
+                .eq('user_id', userId)
+                .single();
+
+            if (error || !habit) {
+                throw new TRPCError({ 
+                    code: 'NOT_FOUND', 
+                    message: 'Habit not found or unauthorized.' 
+                });
+            }
+
+            try {
+                // 2. Call Gemini AI Service
+                // We construct a partial plan object to satisfy the interface, 
+                // leveraging the habit name we just fetched.
+                const panicImageUrl = await AIService.generatePanicImage({
+                    plan: {
+                        title: habit.name,
+                        frequency: 'daily', // Placeholder to satisfy interface
+                        steps: [],          // Placeholder
+                        fun_fact: habit.desc || ''
+                    },
+                    // This style instruction instructs Gemini to act as a harsh art director
+                    style: "surreal, distorted, high-contrast, psychological horror, fever dream",
+                    imageUrl: imageUrl
+                });
+
+                // 3. Return the result
+                // (Optional) You might want to update the habit row or a 'failures' table here.
+                // For now, we return the generated URL so the frontend can display the punishment.
+                return {
+                    success: true,
+                    habitId: habitId,
+                    panicImageUrl: panicImageUrl
+                };
+
+            } catch (err) {
+                console.error("FailHabit AI Error:", err);
+                throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'Failed to generate punishment image.',
+                    cause: err
+                });
+            }
+        }),
 });

@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { Box, Typography, IconButton, TextField, Button, Tabs, Tab, CircularProgress } from '@mui/material'
+import { Box, Typography, IconButton, TextField, Button, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
-import EditIcon from '@mui/icons-material/Edit'
-import { trpc } from '../utils/trpc.js'
 
 const PopupOverlay = styled(Box)({
   position: 'fixed',
@@ -40,22 +38,6 @@ const CloseButton = styled(IconButton)({
   color: '#FFFFFF',
   '&:hover': {
     backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-})
-
-const StyledTabs = styled(Tabs)({
-  marginBottom: '20px',
-  '& .MuiTabs-indicator': {
-    backgroundColor: '#5B5F9E',
-  },
-})
-
-const StyledTab = styled(Tab)({
-  color: '#FFFFFF',
-  textTransform: 'none',
-  fontSize: '16px',
-  '&.Mui-selected': {
-    color: '#5B5F9E',
   },
 })
 
@@ -105,34 +87,12 @@ const SubmitButton = styled(Button)({
 
 interface CreateTaskPopupProps {
   onClose: () => void
-  onCreateTask: (title: string, description?: string) => void
   onAiSubmit: (prompt: string) => void
 }
 
-export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: CreateTaskPopupProps) {
-  const [currentTab, setCurrentTab] = useState(0)
-  const [manualTitle, setManualTitle] = useState('')
-  const [manualDescription, setManualDescription] = useState('')
+export default function CreateTaskPopup({ onClose, onAiSubmit }: CreateTaskPopupProps) {
   const [aiPrompt, setAiPrompt] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue)
-  }
-
-  const handleManualSubmit = async () => {
-    if (manualTitle.trim()) {
-      setIsSubmitting(true)
-      try {
-        await onCreateTask(manualTitle.trim(), manualDescription.trim() || undefined)
-        onClose()
-      } catch (error) {
-        console.error('Failed to create habit:', error)
-        setIsSubmitting(false)
-      }
-    }
-  }
 
   const handleAiSubmit = () => {
     if (aiPrompt.trim()) {
@@ -150,76 +110,32 @@ export default function CreateTaskPopup({ onClose, onCreateTask, onAiSubmit }: C
         </CloseButton>
 
         <Typography variant="h6" sx={{ color: '#FFFFFF', mb: 2, mt: 1 }}>
-          Create New Task
+          Create New Goal
         </Typography>
 
-        <StyledTabs value={currentTab} onChange={handleTabChange}>
-          <StyledTab
-            icon={<EditIcon />}
-            label="Manual"
-            iconPosition="start"
-          />
-          <StyledTab
-            icon={<SmartToyIcon />}
-            label="AI Assistant"
-            iconPosition="start"
-          />
-        </StyledTabs>
-
         <TabContent>
-          {currentTab === 0 ? (
-            // Manual Tab
-            <>
-              <StyledTextField
-                fullWidth
-                label="Task Title"
-                value={manualTitle}
-                onChange={(e) => setManualTitle(e.target.value)}
-                placeholder="e.g., Exercise for 30 minutes"
-                variant="outlined"
-              />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SmartToyIcon sx={{ color: '#5B5F9E' }} />
+            <Typography sx={{ color: '#FFFFFF' }}>AI Assistant</Typography>
+          </Box>
 
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={2}
-                label="Description (Optional)"
-                value={manualDescription}
-                onChange={(e) => setManualDescription(e.target.value)}
-                placeholder="Add more details about this task..."
-                variant="outlined"
-              />
+          <StyledTextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Describe your goal"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="e.g., I want to build a morning routine that helps me feel energized"
+            variant="outlined"
+          />
 
-              <SubmitButton
-                onClick={handleManualSubmit}
-                disabled={!manualTitle.trim() || isSubmitting}
-              >
-                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Create Task'}
-              </SubmitButton>
-            </>
-          ) : (
-            // AI Tab
-            <>
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Describe your goal"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="e.g., I want to build a morning routine that helps me feel energized"
-                variant="outlined"
-              />
-
-
-              <SubmitButton
-                onClick={handleAiSubmit}
-                disabled={!aiPrompt.trim() || isSubmitting}
-              >
-                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
-              </SubmitButton>
-            </>
-          )}
+          <SubmitButton
+            onClick={handleAiSubmit}
+            disabled={!aiPrompt.trim() || isSubmitting}
+          >
+            {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
+          </SubmitButton>
         </TabContent>
       </PopupContainer>
     </PopupOverlay>

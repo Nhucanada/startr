@@ -1,6 +1,5 @@
-import { Box, Typography, Button } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import ExitToAppIcon from '@mui/icons-material/ExitToApp'
 import Button3D from './Button3D.js'
 
 const Container = styled(Box)({
@@ -9,8 +8,7 @@ const Container = styled(Box)({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  paddingBottom: '80px',
-  padding: '32px',
+  padding: '112px 32px 80px',
 })
 
 const Title = styled(Typography)({
@@ -32,49 +30,13 @@ const Description = styled(Typography)({
   maxWidth: '280px',
 })
 
-const LogoutButton = styled(Button)({
-  position: 'absolute',
-  top: '32px',
-  right: '32px',
-  backgroundColor: 'rgba(255,255,255,0.1)',
-  color: '#FFFFFF',
-  borderRadius: '8px',
-  textTransform: 'none',
-  fontSize: '14px',
-  padding: '8px 16px',
-  '&:hover': {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-})
-
-const UserInfo = styled(Typography)({
-  position: 'absolute',
-  top: '32px',
-  left: '32px',
-  color: '#FFFFFF',
-  fontSize: '14px',
-  opacity: 0.8,
-})
-
 interface ButtonPageContentProps {
   onButtonClick: () => void
-  onLogout: () => void
 }
 
-export default function ButtonPageContent({ onButtonClick, onLogout }: ButtonPageContentProps) {
-  const handleLogout = async () => {
-    await onLogout()
-  }
-
+export default function ButtonPageContent({ onButtonClick }: ButtonPageContentProps) {
   return (
     <Container>
-      <LogoutButton
-        startIcon={<ExitToAppIcon />}
-        onClick={handleLogout}
-      >
-        Logout
-      </LogoutButton>
-
       <Button3D onClick={onButtonClick} />
       <Title>Panic Button</Title>
       <Description>

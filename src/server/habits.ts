@@ -461,9 +461,10 @@ export const habitsRouter = router({
                     input.desc
                 );
 
-                console.log(generatedImageUrl)
-
-                return newHabit;
+                return {
+                    habit: newHabit,
+                    plan: habitPlan,
+                };
             } catch (error) {
                 console.error("Create Habit Error:", error);
                 throw new TRPCError({

@@ -1,13 +1,14 @@
-import { useState, useRef } from 'react'
-import { Box } from '@mui/material'
+import { useState } from 'react'
+import { Box, Button } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import ExitToAppIcon from '@mui/icons-material/ExitToApp'
 import SwipeablePages, { PageType } from './components/SwipeablePages.js'
-import NewPageContent from './components/NewPageContent.js'
 import HabitTrackerContent from './components/HabitTrackerContent.js'
 import ButtonPageContent from './components/ButtonPageContent.js'
 import BottomNav from './components/BottomNav.js'
 import CameraPopup from './components/CameraPopup.js'
 import CreateTaskPopup from './components/CreateTaskPopup.js'
+import AIResponsePopup, { AIResponsePayload } from './components/AIResponsePopup.js'
 import LoginOverlay from './components/LoginOverlay.js'
 import { authService } from './services/auth.js'
 
@@ -35,29 +36,29 @@ const MobileFrame = styled(Box)({
   position: 'relative',
 })
 
-interface Task {
-  id: string
-  title: string
-  description?: string
-  completed: boolean
-  streak: number
-}
-
-interface AIResponse {
-  prompt: string
-  response: string
-  suggestions: string[]
-}
+const TopLogoutButton = styled(Button)({
+  position: 'absolute',
+  top: '16px',
+  right: '16px',
+  backgroundColor: 'rgba(255,255,255,0.1)',
+  color: '#FFFFFF',
+  borderRadius: '8px',
+  textTransform: 'none',
+  fontSize: '14px',
+  padding: '8px 16px',
+  zIndex: 2,
+  '&:hover': {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+})
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
   const [showCameraPopup, setShowCameraPopup] = useState(false)
   const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | undefined>()
-  const [aiResponse, setAiResponse] = useState<AIResponse | undefined>()
+  const [showAiResponsePopup, setShowAiResponsePopup] = useState(false)
+  const [aiResponse, setAiResponse] = useState<AIResponsePayload | null>(null)
   const [showLoginOverlay, setShowLoginOverlay] = useState(!authService.isAuthenticated())
-  const createTaskCallbackRef = useRef<((title: string, description?: string) => void) | null>(null)
-  const toggleTaskCallbackRef = useRef<((taskId: string) => void) | null>(null)
 
   const utils = trpc.useUtils()
 
@@ -75,14 +76,6 @@ function App() {
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page)
-
-    // Reset state when leaving the 'new' page, but wait for animation to complete
-    if (currentPage === 'new' && page !== 'new') {
-      setTimeout(() => {
-        setSelectedTask(undefined)
-        setAiResponse(undefined)
-      }, 300) // Match the 0.3s animation duration
-    }
   }
 
   const handleButtonClick = () => {
@@ -93,92 +86,34 @@ function App() {
     setShowCameraPopup(false)
   }
 
-  const handleOpenCreateTask = (callback: (title: string, description?: string) => void) => {
-    createTaskCallbackRef.current = callback
+  const handleOpenCreateTask = () => {
     setShowCreateTaskPopup(true)
   }
 
-  const handleSelectTask = (task: Task, toggleCallback: (taskId: string) => void) => {
-    setSelectedTask(task)
-    setAiResponse(undefined) // Clear AI response when selecting a task
-    toggleTaskCallbackRef.current = toggleCallback
-    setCurrentPage('new')
-  }
-
   const handleAiSubmit = async (prompt: string) => {
-    // Create the habit using the backend
     try {
       const result = await createHabitMutation.mutateAsync({ name: prompt })
-
-      console.log(result)
-
-      // Transform the backend response into AIResponse format for display
-      const plan = result.plan as { title?: string; frequency?: string; steps?: string[]; fun_fact?: string } | null
-      const aiResult: AIResponse = {
+      const plan = result?.plan as { steps?: string[]; fun_fact?: string } | undefined
+      const responsePayload: AIResponsePayload = {
         prompt,
-        response: plan?.fun_fact || `Great! I've created a habit plan for "${prompt}". Here are some steps to help you succeed:`,
-        suggestions: plan?.steps || [
-          'Start with 5 minutes daily',
-          'Set a specific time each day',
-          'Track your progress weekly'
-        ]
+        response: plan?.fun_fact || `I created a goal plan for "${prompt}".`,
+        suggestions: plan?.steps ?? [],
       }
-
-      setAiResponse(aiResult)
-      setSelectedTask(undefined)
-      setCurrentPage('new')
+      setAiResponse(responsePayload)
+      setShowAiResponsePopup(true)
     } catch (error) {
       console.error('Failed to create AI habit:', error)
-      // Fallback to mock response on error
-      const mockResponse: AIResponse = {
+      setAiResponse({
         prompt,
-        response: `Based on your goal: "${prompt}", I recommend breaking this down into smaller, manageable habits:`,
-        suggestions: [
-          'Start with 5 minutes daily',
-          'Set a specific time each day',
-          'Track your progress weekly'
-        ]
-      }
-      setAiResponse(mockResponse)
-      setSelectedTask(undefined)
-      setCurrentPage('new')
+        response: 'Sorry, I could not generate a response right now. Please try again.',
+        suggestions: [],
+      })
+      setShowAiResponsePopup(true)
     }
   }
-
-  const handleToggleSelectedTask = (taskId: string) => {
-    if (toggleTaskCallbackRef.current) {
-      toggleTaskCallbackRef.current(taskId)
-      // Update the selected task's completion status
-      if (selectedTask && selectedTask.id === taskId) {
-        setSelectedTask(prev => prev ? { ...prev, completed: !prev.completed } : undefined)
-      }
-    }
-  }
-
-  const handleCreateTask = async (title: string, _description?: string) => {
-    try {
-      await createHabitMutation.mutateAsync({ name: title, desc: _description })
-      // Also call the callback if it exists for local state update
-      if (createTaskCallbackRef.current) {
-        createTaskCallbackRef.current(title, _description)
-      }
-    } catch (error) {
-      console.error('Failed to create task:', error)
-    }
-  }
-
-  const handleCreateTaskFromLeftPage = async (title: string, _description?: string) => {
-    try {
-      await createHabitMutation.mutateAsync({ name: title, desc: _description })
-    } catch (error) {
-      console.error('Failed to create task from left page:', error)
-    }
-  }
-
 
   const handleCloseCreateTask = () => {
     setShowCreateTaskPopup(false)
-    createTaskCallbackRef.current = null
   }
 
 
@@ -194,16 +129,14 @@ function App() {
       )}
       <AppContainer>
         <MobileFrame>
+          {!showLoginOverlay && (
+            <TopLogoutButton startIcon={<ExitToAppIcon />} onClick={handleLogout}>
+              Logout
+            </TopLogoutButton>
+          )}
           <SwipeablePages currentPage={currentPage} onPageChange={handleNavigate}>
-            <NewPageContent
-              selectedTask={selectedTask}
-              aiResponse={aiResponse}
-              onToggleTask={handleToggleSelectedTask}
-              onCreateTask={handleCreateTaskFromLeftPage}
-              onAiSubmit={handleAiSubmit}
-            />
-            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} onSelectTask={handleSelectTask} />
-            <ButtonPageContent onButtonClick={handleButtonClick} onLogout={handleLogout} />
+            <HabitTrackerContent onOpenCreateTask={handleOpenCreateTask} />
+            <ButtonPageContent onButtonClick={handleButtonClick} />
           </SwipeablePages>
           <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
         </MobileFrame>
@@ -216,8 +149,14 @@ function App() {
       {showCreateTaskPopup && (
         <CreateTaskPopup
           onClose={handleCloseCreateTask}
-          onCreateTask={handleCreateTask}
           onAiSubmit={handleAiSubmit}
+        />
+      )}
+
+      {showAiResponsePopup && aiResponse && (
+        <AIResponsePopup
+          response={aiResponse}
+          onClose={() => setShowAiResponsePopup(false)}
         />
       )}
 

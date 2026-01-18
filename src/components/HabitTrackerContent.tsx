@@ -8,7 +8,7 @@ import { authService } from '../services/auth.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
-  padding: '32px 32px 100px',
+  padding: '112px 32px 100px',
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
@@ -183,13 +183,11 @@ interface Task {
 }
 
 interface HabitTrackerContentProps {
-  onOpenCreateTask: (callback: (title: string, description?: string) => void) => void
-  onSelectTask: (task: Task, toggleCallback: (taskId: string) => void) => void
+  onOpenCreateTask: () => void
 }
 
 export default function HabitTrackerContent({
   onOpenCreateTask,
-  onSelectTask,
 }: HabitTrackerContentProps) {
   const utils = trpc.useUtils()
   const isAuthenticated = authService.isAuthenticated()
@@ -220,12 +218,6 @@ export default function HabitTrackerContent({
     streak: 0, // Backend doesn't track streaks yet
   }))
 
-  const handleCreateTask = (title: string, description?: string) => {
-    // This is now handled by App.tsx via the popup
-    // The local state is automatically updated via query invalidation
-    console.log('Task created via backend:', { title, description })
-  }
-
   const handleToggleTask = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
@@ -250,11 +242,7 @@ export default function HabitTrackerContent({
   }
 
   const handleOpenCreateTask = () => {
-    onOpenCreateTask(handleCreateTask)
-  }
-
-  const handleTaskClick = (task: Task) => {
-    onSelectTask(task, handleToggleTask)
+    onOpenCreateTask()
   }
 
   const completedCount = tasks.filter((task) => task.completed).length
@@ -330,11 +318,13 @@ export default function HabitTrackerContent({
         <ScrollableTaskList>
           {tasks.map((task) => (
             <HabitCard key={task.id}>
-              <HabitText onClick={() => handleTaskClick(task)}>{task.title}</HabitText>
+              <HabitText>{task.title}</HabitText>
               <TaskRightContainer>
-                <StreakCounter>
-                  <TaskStreakText>{task.streak} 🔥</TaskStreakText>
-                </StreakCounter>
+                {task.streak > 0 && (
+                  <StreakCounter>
+                    <TaskStreakText>{task.streak} 🔥</TaskStreakText>
+                  </StreakCounter>
+                )}
                 <CheckboxContainer
                   checked={task.completed}
                   onClick={() => handleToggleTask(task.id)}

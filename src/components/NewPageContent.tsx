@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, IconButton, TextField, Button, Tabs, Tab, CircularProgress } from '@mui/material'
+import { Box, Typography, IconButton, TextField, Button, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import { trpc } from '../utils/trpc.js'
 
 const Container = styled(Box)({
   height: '100%',
@@ -156,22 +154,6 @@ const SubmitButton = styled(Button)({
   },
 })
 
-const StyledTabs = styled(Tabs)({
-  marginBottom: '20px',
-  '& .MuiTabs-indicator': {
-    backgroundColor: '#5B5F9E',
-  },
-})
-
-const StyledTab = styled(Tab)({
-  color: '#FFFFFF',
-  textTransform: 'none',
-  fontSize: '16px',
-  '&.Mui-selected': {
-    color: '#5B5F9E',
-  },
-})
-
 const TabContent = styled(Box)({
   flex: 1,
   display: 'flex',
@@ -204,9 +186,6 @@ interface NewPageContentProps {
 type ViewMode = 'taskDetail' | 'aiResponse' | 'createTask'
 
 export default function NewPageContent({ selectedTask, aiResponse, onToggleTask, onCreateTask, onAiSubmit }: NewPageContentProps) {
-  const [currentTab, setCurrentTab] = useState(0)
-  const [taskTitle, setTaskTitle] = useState('')
-  const [taskDescription, setTaskDescription] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null)
@@ -215,35 +194,12 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
   // Reset form fields when neither selectedTask nor aiResponse are present
   useEffect(() => {
     if (!selectedTask && !aiResponse) {
-      setTaskTitle('')
-      setTaskDescription('')
       setAiPrompt('')
-      setCurrentTab(0)
     }
   }, [selectedTask, aiResponse])
 
   // Determine view mode based on props
   const currentMode: ViewMode = selectedTask ? 'taskDetail' : aiResponse ? 'aiResponse' : 'createTask'
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    event.stopPropagation()
-    setCurrentTab(newValue)
-  }
-
-  const handleCreateTaskSubmit = async () => {
-    if (taskTitle.trim() && onCreateTask) {
-      setIsSubmitting(true)
-      try {
-        await onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
-        setTaskTitle('')
-        setTaskDescription('')
-      } catch (error) {
-        console.error('Failed to create task:', error)
-      } finally {
-        setIsSubmitting(false)
-      }
-    }
-  }
 
   const handleAiSubmit = () => {
     if (aiPrompt.trim() && onAiSubmit) {
@@ -342,75 +298,32 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
     <Container>
       <TaskCreationCard>
         <Typography variant="h6" sx={{ color: '#FFFFFF', mb: 2, mt: 1 }}>
-          Create New Task
+          Create New Goal
         </Typography>
 
-        <StyledTabs value={currentTab} onChange={handleTabChange}>
-          <StyledTab
-            icon={<EditIcon />}
-            label="Manual"
-            iconPosition="start"
-          />
-          <StyledTab
-            icon={<SmartToyIcon />}
-            label="AI Assistant"
-            iconPosition="start"
-          />
-        </StyledTabs>
-
         <TabContent>
-          {currentTab === 0 ? (
-            // Manual Tab
-            <>
-              <StyledTextField
-                fullWidth
-                label="Task Title"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                placeholder="e.g., Exercise for 30 minutes"
-                variant="outlined"
-              />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SmartToyIcon sx={{ color: '#5B5F9E' }} />
+            <Typography sx={{ color: '#FFFFFF' }}>AI Assistant</Typography>
+          </Box>
 
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={2}
-                label="Description (Optional)"
-                value={taskDescription}
-                onChange={(e) => setTaskDescription(e.target.value)}
-                placeholder="Add more details about this task..."
-                variant="outlined"
-              />
+          <StyledTextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Describe your goal"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="e.g., I want to build a morning routine that helps me feel energized"
+            variant="outlined"
+          />
 
-              <SubmitButton
-                onClick={handleCreateTaskSubmit}
-                disabled={!taskTitle.trim() || isSubmitting}
-              >
-                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Create Task'}
-              </SubmitButton>
-            </>
-          ) : (
-            // AI Tab
-            <>
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Describe your goal"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="e.g., I want to build a morning routine that helps me feel energized"
-                variant="outlined"
-              />
-
-              <SubmitButton
-                onClick={handleAiSubmit}
-                disabled={!aiPrompt.trim() || isSubmitting}
-              >
-                {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
-              </SubmitButton>
-            </>
-          )}
+          <SubmitButton
+            onClick={handleAiSubmit}
+            disabled={!aiPrompt.trim() || isSubmitting}
+          >
+            {isSubmitting ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Get AI Suggestions'}
+          </SubmitButton>
         </TabContent>
       </TaskCreationCard>
     </Container>

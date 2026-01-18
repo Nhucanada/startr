@@ -235,7 +235,10 @@ export const habitsRouter = router({
                     input.desc
                 );
 
-                return newHabit;
+                return {
+                    habit: newHabit,
+                    plan: habitPlan,
+                };
             } catch (error) {
                 console.error("Create Habit Error:", error);
                 throw new TRPCError({

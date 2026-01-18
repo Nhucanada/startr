@@ -41,12 +41,16 @@ async function uploadToSupabase(buffer: Buffer, bucketName: string) {
         });
     }
 
-    // Get the public URL to return to the client
+    // Get the public URL to return to the client (may be private)
     const { data: publicData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(fileName);
 
-    return publicData.publicUrl;
+    return {
+        publicUrl: publicData.publicUrl,
+        path: fileName,
+        bucketName
+    };
 }
 
 /**
@@ -185,9 +189,9 @@ const AIService = {
 
         // 4. Upload to Supabase and get Public URL
         // Ensure you have a bucket named 'habit-images' in Supabase
-        const publicUrl = await uploadToSupabase(buffer, 'genai_images');
+        const uploadResult = await uploadToSupabase(buffer, 'genai_images');
 
-        return publicUrl;
+        return uploadResult.publicUrl;
     },
 
     generatePanicImage: async (_habitContext: { plan: HabitPlan; style: string; imageUrl: string }) => {
@@ -281,11 +285,21 @@ const AIService = {
         const outputBuffer = Buffer.from(part.inlineData.data, "base64");
 
         // Reusing your existing upload helper
-        const publicUrl = await uploadToSupabase(outputBuffer, 'genai_images');
+        const uploadResult = await uploadToSupabase(outputBuffer, 'genai_images');
 
-        console.log('[generatePanicImage] Successfully generated and uploaded panic image:', publicUrl)
+        const { data: signedData, error: signedError } = await supabase.storage
+            .from(uploadResult.bucketName)
+            .createSignedUrl(uploadResult.path, 60 * 60 * 24 * 30);
 
-        return publicUrl;
+        if (signedError || !signedData?.signedUrl) {
+            console.error('[generatePanicImage] Failed to create signed URL:', signedError)
+            console.log('[generatePanicImage] Falling back to public URL:', uploadResult.publicUrl)
+            return uploadResult.publicUrl;
+        }
+
+        console.log('[generatePanicImage] Successfully generated and uploaded panic image:', signedData.signedUrl)
+
+        return signedData.signedUrl;
     },
 };
 

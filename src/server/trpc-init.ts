@@ -1,5 +1,5 @@
 import { initTRPC, TRPCError } from '@trpc/server'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.ts'
 
 // Context creation - extracts auth token from request headers
 export const createContext = async (opts: { req: Request } | { req: { headers: { authorization?: string } } }) => {

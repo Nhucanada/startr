@@ -10,6 +10,7 @@ import CameraPopup from './components/CameraPopup.js'
 import CreateTaskPopup from './components/CreateTaskPopup.js'
 import LoginOverlay from './components/LoginOverlay.js'
 import { authService } from './services/auth.js'
+
 import { trpc } from './utils/trpc.js'
 
 const AppContainer = styled(Box)({

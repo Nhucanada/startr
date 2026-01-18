@@ -54,19 +54,19 @@ const ProgressLabel = styled(Typography)({
 
 const HabitCard = styled(Box)({
   backgroundColor: '#5B5F9E',
-  borderRadius: '24px',
-  padding: '24px',
-  marginBottom: '24px',
-  minHeight: '80px',
+  borderRadius: '20px',
+  padding: '16px 12px',
+  marginBottom: '16px',
+  minHeight: '60px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
 })
 
 const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
-  width: '48px',
-  height: '48px',
-  borderRadius: '12px',
+  width: '40px',
+  height: '40px',
+  borderRadius: '10px',
   backgroundColor: checked ? '#7FD4A3' : 'rgba(255,255,255,0.2)',
   display: 'flex',
   alignItems: 'center',
@@ -78,37 +78,50 @@ const CheckboxContainer = styled(Box)<{ checked: boolean }>(({ checked }) => ({
 
 const StreakCounter = styled(Box)({
   backgroundColor: 'rgba(255,255,255,0.1)',
-  borderRadius: '16px',
-  padding: '8px 12px',
-  marginRight: '12px',
+  borderRadius: '8px',
+  padding: '2px 6px',
+  marginRight: '6px',
   flexShrink: 0,
+  height: '28px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '40px',
 })
 
 const TaskStreakText = styled(Typography)({
   color: '#FFFFFF',
-  fontSize: '14px',
+  fontSize: '11px',
   fontWeight: '600',
+  lineHeight: '1',
 })
 
 const TaskRightContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
-  gap: '12px',
+  gap: '6px',
+  flexShrink: 0,
 })
 
 const EmptyHabitCard = styled(Box)({
   backgroundColor: '#4A4E7A',
-  borderRadius: '24px',
-  padding: '24px',
-  marginBottom: '24px',
-  minHeight: '80px',
+  borderRadius: '20px',
+  padding: '16px 12px',
+  marginBottom: '16px',
+  minHeight: '60px',
   opacity: 0.6,
 })
 
 const HabitText = styled(Typography)({
   color: '#FFFFFF',
-  fontSize: '20px',
+  fontSize: '16px',
   fontWeight: '400',
+  lineHeight: '1.3',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  flex: 1,
+  minWidth: 0,
 })
 
 const TaskListContainer = styled(Box)({
@@ -256,7 +269,7 @@ export default function HabitTrackerContent({
                   onClick={() => handleToggleTask(task.id)}
                 >
                   {task.completed && (
-                    <CheckIcon sx={{ color: '#FFFFFF', fontSize: '28px' }} />
+                    <CheckIcon sx={{ color: '#FFFFFF', fontSize: '20px' }} />
                   )}
                 </CheckboxContainer>
               </TaskRightContainer>

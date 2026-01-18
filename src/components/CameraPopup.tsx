@@ -351,14 +351,10 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
     }
   }
 
-  const handleClose = () => {
-    stopCamera()
-    onClose()
-  }
 
   return (
-    <PopupOverlay onClick={handleClose}>
-      <PopupContainer onClick={(e) => e.stopPropagation()}>
+    <PopupOverlay>
+      <PopupContainer>
         <VideoContainer>
           {loading && (
             <LoadingContainer>

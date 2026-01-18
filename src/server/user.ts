@@ -21,7 +21,45 @@ const supabase = createClient(supabaseUrl, supabaseSecretKey, {
 
 // Helper to handle the upload logic cleanly
 async function uploadToSupabase(buffer: Buffer, bucketName: string) {
-    const fileName = `private/panic-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+    const fileName = `panic-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+
+    console.log('[uploadToSupabase] Uploading to bucket:', bucketName, 'with filename:', fileName)
+
+    // Check if bucket exists and make sure it's public
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+    if (listError) {
+        console.warn('[uploadToSupabase] Could not list buckets:', listError)
+    } else {
+        const bucket = buckets.find(bucket => bucket.name === bucketName)
+        if (!bucket) {
+            console.log('[uploadToSupabase] Bucket does not exist, creating:', bucketName)
+            const { error: createError } = await supabase.storage.createBucket(bucketName, {
+                public: true,
+                allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+            })
+            if (createError) {
+                console.error('[uploadToSupabase] Failed to create bucket:', createError)
+            } else {
+                console.log('[uploadToSupabase] Successfully created bucket:', bucketName)
+            }
+        } else {
+            console.log('[uploadToSupabase] Bucket exists. Public:', bucket.public)
+
+            // If bucket exists but is not public, try to update it
+            if (!bucket.public) {
+                console.log('[uploadToSupabase] Making bucket public...')
+                const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+                    public: true,
+                    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+                })
+                if (updateError) {
+                    console.error('[uploadToSupabase] Failed to make bucket public:', updateError)
+                } else {
+                    console.log('[uploadToSupabase] Successfully made bucket public')
+                }
+            }
+        }
+    }
 
     const { error } = await supabase.storage
         .from(bucketName)
@@ -38,10 +76,14 @@ async function uploadToSupabase(buffer: Buffer, bucketName: string) {
         });
     }
 
+    console.log('[uploadToSupabase] Upload successful, generating public URL...')
+
     // Get the public URL to return to the client
     const { data: publicData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(fileName);
+
+    console.log('[uploadToSupabase] Generated public URL:', publicData.publicUrl)
 
     return publicData.publicUrl;
 }

@@ -112,12 +112,60 @@ const CapturedImage = styled('img')({
   objectFit: 'cover',
 })
 
+const PunishmentContainer = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '16px',
+  padding: '20px',
+})
+
+const PunishmentImage = styled('img')({
+  width: '100%',
+  maxHeight: '300px',
+  objectFit: 'contain',
+  borderRadius: '12px',
+  border: '2px solid #FF6B6B',
+})
+
+const PunishmentText = styled(Typography)({
+  color: '#FFFFFF',
+  fontSize: '18px',
+  fontWeight: '600',
+  textAlign: 'center',
+  marginBottom: '8px',
+})
+
+const PunishmentSubtext = styled(Typography)({
+  color: '#FF6B6B',
+  fontSize: '14px',
+  textAlign: 'center',
+  fontStyle: 'italic',
+})
+
+const CloseButton = styled(Box)({
+  backgroundColor: '#FF6B6B',
+  color: '#FFFFFF',
+  padding: '12px 24px',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontSize: '16px',
+  fontWeight: '600',
+  textAlign: 'center',
+  marginTop: '16px',
+  '&:hover': {
+    backgroundColor: '#FF5252',
+  },
+})
+
 interface CameraPopupProps {
   onClose: () => void
+  habitId?: string
 }
 
-export default function CameraPopup({ onClose }: CameraPopupProps) {
+export default function CameraPopup({ onClose, habitId }: CameraPopupProps) {
   const uploadImage = trpc.user.uploadImage.useMutation()
+  const failHabit = trpc.habits.failHabit.useMutation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -135,6 +183,8 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [punishmentImage, setPunishmentImage] = useState<string | null>(null)
+  const [generatingPunishment, setGeneratingPunishment] = useState(false)
 
   const stopCamera = () => {
     // Clear any pending timeouts
@@ -333,13 +383,46 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
       if (result.success) {
         setUploadSuccess(true)
 
-        // Close popup after successful upload
-        if (closeTimeoutRef.current) {
-          clearTimeout(closeTimeoutRef.current)
+        // If we have a habitId, generate punishment image
+        if (habitId && result.url) {
+          console.log('[CameraPopup] Starting punishment generation for habit:', habitId)
+          console.log('[CameraPopup] Using image URL:', result.url)
+          setGeneratingPunishment(true)
+          try {
+            const punishmentResult = await failHabit.mutateAsync({
+              habitId: habitId,
+              imageUrl: result.url
+            })
+
+            console.log('[CameraPopup] Punishment result:', punishmentResult)
+
+            if (punishmentResult.success && punishmentResult.panicImageUrl) {
+              console.log('[CameraPopup] Setting punishment image:', punishmentResult.panicImageUrl)
+              setPunishmentImage(punishmentResult.panicImageUrl)
+              // Don't auto-close, let user see the punishment
+            } else {
+              console.error('[CameraPopup] Punishment generation returned unsuccessful result')
+              setUploadError('Punishment generation was not successful')
+            }
+          } catch (punishmentError) {
+            console.error('[CameraPopup] Failed to generate punishment image:', punishmentError)
+            // Log the full error details for debugging
+            if (punishmentError && typeof punishmentError === 'object' && 'data' in punishmentError) {
+              console.error('[CameraPopup] Error data:', (punishmentError as any).data)
+            }
+            setUploadError(`Failed to generate punishment image: ${punishmentError instanceof Error ? punishmentError.message : 'Unknown error'}`)
+          } finally {
+            setGeneratingPunishment(false)
+          }
+        } else {
+          // No habitId, just close as before
+          if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current)
+          }
+          closeTimeoutRef.current = setTimeout(() => {
+            onClose()
+          }, 2000)
         }
-        closeTimeoutRef.current = setTimeout(() => {
-          onClose()
-        }, 2000)
       } else {
         setUploadError('Upload was not successful')
       }
@@ -403,10 +486,27 @@ export default function CameraPopup({ onClose }: CameraPopupProps) {
           </UploadMessage>
         )}
 
-        {uploadSuccess && (
+        {uploadSuccess && !generatingPunishment && !punishmentImage && (
           <UploadSuccess>
             ✅ Upload complete! Closing...
           </UploadSuccess>
+        )}
+
+        {generatingPunishment && (
+          <UploadMessage>
+            🤖 Generating your punishment image...
+          </UploadMessage>
+        )}
+
+        {punishmentImage && (
+          <PunishmentContainer>
+            <PunishmentText>This is what you will look like</PunishmentText>
+            <PunishmentSubtext>if you continue to fail your habits...</PunishmentSubtext>
+            <PunishmentImage src={punishmentImage} alt="AI-generated punishment" />
+            <CloseButton onClick={onClose}>
+              Accept Your Fate
+            </CloseButton>
+          </PunishmentContainer>
         )}
 
         {uploadError && (

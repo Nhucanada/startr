@@ -26,7 +26,7 @@ interface HabitUpdates {
 async function uploadToSupabase(buffer: Buffer, bucketName: string) {
     const fileName = `habit-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
     
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
         .from(bucketName)
         .upload(fileName, buffer, {
             contentType: 'image/jpeg',
@@ -171,7 +171,7 @@ const AIService = {
 
         // 2. Extract Base64 Data
         // The model returns inlineData for images
-        const part = response.candidates[0].content.parts.find(p => p.inlineData);
+        const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
         
         if (!part || !part.inlineData || !part.inlineData.data) {
              throw new TRPCError({ 
@@ -191,37 +191,55 @@ const AIService = {
     },
 
     generatePanicImage: async (_habitContext: { plan: HabitPlan; style: string; imageUrl: string }) => {
+        console.log('[generatePanicImage] Starting with context:', _habitContext)
         const ai = GeminiService.getInstance().ai;
 
         // 1. Fetch the source image from the Supabase URL
         // We need the raw buffer to convert it to base64 for Gemini
+        console.log('[generatePanicImage] Fetching image from URL:', _habitContext.imageUrl)
         const imageResponse = await fetch(_habitContext.imageUrl);
-        
+
         if (!imageResponse.ok) {
-            throw new TRPCError({ 
-                code: 'BAD_REQUEST', 
-                message: 'Failed to fetch source image from Supabase.' 
+            console.error('[generatePanicImage] Failed to fetch image. Status:', imageResponse.status, imageResponse.statusText)
+
+            // Try to get more details about the error
+            try {
+                const errorText = await imageResponse.text()
+                console.error('[generatePanicImage] Error response body:', errorText)
+            } catch (e) {
+                console.error('[generatePanicImage] Could not read error response body')
+            }
+
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: `Failed to fetch source image from Supabase. Status: ${imageResponse.status} ${imageResponse.statusText}`
             });
         }
+
+        console.log('[generatePanicImage] Image fetch successful, processing...')
 
         const arrayBuffer = await imageResponse.arrayBuffer();
         const mimeType = imageResponse.headers.get("content-type") || "image/png";
         const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
+        console.log('[generatePanicImage] Image processed. MimeType:', mimeType, 'Base64 length:', base64Image.length)
+
         // 2. Configure the Prompt
         // We inject the satirical "Startr" persona to maintain consistency with your hackathon theme
         const prompt = `
-        You are a chaotic art director for a satirical startup called 'Startr'. 
-        
+        You are a chaotic art director for a satirical startup called 'Startr'.
+
         INSTRUCTION:
-        Edit this image to make it look 'panicked', high-stakes, and intense. 
+        Edit this image to make it look 'panicked', high-stakes, and intense.
         Apply the following art style: ${_habitContext.style}.
-        
+
         CONTEXT:
         The user is struggling with the habit: "${_habitContext.plan.title}".
-        Keep the main subject of the original photo but distort the environment 
+        Keep the main subject of the original photo but distort the environment
         to look stressful, cartoonish, and like a fever dream.
         `;
+
+        console.log('[generatePanicImage] Sending request to Gemini...')
 
         // 3. Initialize Chat (Best practice for Image Editing/Transformation)
         // usage of 'gemini-2.5-flash-image' is recommended for edits
@@ -229,34 +247,43 @@ const AIService = {
 
         // 4. Send the Request
         const response = await chat.sendMessage({
-            content: [
+            message: [
                 { inlineData: { mimeType: mimeType, data: base64Image } },
                 prompt
             ]
         });
 
+        console.log('[generatePanicImage] Received response from Gemini')
+
         // 5. Parse Response
         if (!response.candidates || response.candidates.length < 1) {
-            throw new TRPCError({ 
-                code: 'INTERNAL_SERVER_ERROR', 
-                message: 'Panic image generation failed.' 
+            console.error('[generatePanicImage] No candidates in response:', response)
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'Panic image generation failed.'
             });
         }
 
-        const part = response.candidates[0].content.parts.find(p => p.inlineData);
-        
+        console.log('[generatePanicImage] Found candidates, extracting image data...')
+        const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
         if (!part || !part.inlineData || !part.inlineData.data) {
-             throw new TRPCError({ 
-                code: 'INTERNAL_SERVER_ERROR', 
-                message: 'No image data found in AI response.' 
+            console.error('[generatePanicImage] No image data in response parts:', response.candidates?.[0]?.content?.parts)
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'No image data found in AI response.'
             });
         }
+
+        console.log('[generatePanicImage] Uploading generated image to Supabase...')
 
         // 6. Convert and Upload
         const outputBuffer = Buffer.from(part.inlineData.data, "base64");
-        
+
         // Reusing your existing upload helper
         const publicUrl = await uploadToSupabase(outputBuffer, 'genai_images');
+
+        console.log('[generatePanicImage] Successfully generated and uploaded panic image:', publicUrl)
 
         return publicUrl;
     },
@@ -609,8 +636,11 @@ export const habitsRouter = router({
             const { habitId, imageUrl } = input;
             const userId = ctx.user.id;
 
+            console.log('[failHabit] Starting for habitId:', habitId, 'userId:', userId)
+            console.log('[failHabit] Image URL:', imageUrl)
+
             // 1. Fetch Habit Context
-            // We need the name of the habit (e.g., "Quit Smoking") so the AI 
+            // We need the name of the habit (e.g., "Quit Smoking") so the AI
             // knows what the "Panic" is about.
             const { data: habit, error } = await ctx.supabase
                 .from('habits')
@@ -620,15 +650,19 @@ export const habitsRouter = router({
                 .single();
 
             if (error || !habit) {
-                throw new TRPCError({ 
-                    code: 'NOT_FOUND', 
-                    message: 'Habit not found or unauthorized.' 
+                console.error('[failHabit] Habit fetch error:', error)
+                throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'Habit not found or unauthorized.'
                 });
             }
 
+            console.log('[failHabit] Found habit:', habit)
+
             try {
+                console.log('[failHabit] Starting AI image generation...')
                 // 2. Call Gemini AI Service
-                // We construct a partial plan object to satisfy the interface, 
+                // We construct a partial plan object to satisfy the interface,
                 // leveraging the habit name we just fetched.
                 const panicImageUrl = await AIService.generatePanicImage({
                     plan: {
@@ -642,6 +676,8 @@ export const habitsRouter = router({
                     imageUrl: imageUrl
                 });
 
+                console.log('[failHabit] AI generated panic image URL:', panicImageUrl)
+
                 // 3. Return the result
                 // (Optional) You might want to update the habit row or a 'failures' table here.
                 // For now, we return the generated URL so the frontend can display the punishment.
@@ -652,7 +688,7 @@ export const habitsRouter = router({
                 };
 
             } catch (err) {
-                console.error("FailHabit AI Error:", err);
+                console.error("[failHabit] AI Error:", err);
                 throw new TRPCError({
                     code: 'INTERNAL_SERVER_ERROR',
                     message: 'Failed to generate punishment image.',

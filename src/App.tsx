@@ -55,6 +55,7 @@ const TopLogoutButton = styled(Button)({
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
   const [showCameraPopup, setShowCameraPopup] = useState(false)
+  const [panicHabitId, setPanicHabitId] = useState<string | null>(null)
   const [showCreateTaskPopup, setShowCreateTaskPopup] = useState(false)
   const [showAiResponsePopup, setShowAiResponsePopup] = useState(false)
   const [aiResponse, setAiResponse] = useState<AIResponsePayload | null>(null)
@@ -80,12 +81,14 @@ function App() {
     setCurrentPage(page)
   }
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (habitId?: string) => {
+    setPanicHabitId(habitId || null)
     setShowCameraPopup(true)
   }
 
   const handleCloseCameraPopup = () => {
     setShowCameraPopup(false)
+    setPanicHabitId(null)
     // Reset panic mode when camera popup closes
     if (resetPanicModeRef.current) {
       resetPanicModeRef.current()
@@ -168,7 +171,7 @@ function App() {
       </AppContainer>
 
       {showCameraPopup && (
-        <CameraPopup onClose={handleCloseCameraPopup} />
+        <CameraPopup onClose={handleCloseCameraPopup} habitId={panicHabitId || undefined} />
       )}
 
       {showCreateTaskPopup && (

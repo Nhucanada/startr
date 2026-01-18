@@ -198,7 +198,7 @@ interface Task {
 
 interface HabitTrackerContentProps {
   onOpenCreateTask: () => void
-  onPanic: () => void
+  onPanic: (habitId?: string) => void
   onEmphasisChange?: (active: boolean) => void
   resetPanicModeRef?: React.MutableRefObject<(() => void) | null>
 }
@@ -389,7 +389,7 @@ export default function HabitTrackerContent({
         if (!panicTriggeredRef.current) {
           panicTriggeredRef.current = true
           setHoldState('panic')
-          onPanic()
+          onPanic(holdTaskId || undefined)
         }
       }
     }, 50)

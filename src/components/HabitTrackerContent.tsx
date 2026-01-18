@@ -3,6 +3,7 @@ import { styled } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 import { trpc } from '../utils/trpc.js'
+import { authService } from '../services/auth.js'
 
 const GradientContainer = styled(Box)({
   height: '100%',
@@ -190,9 +191,12 @@ export default function HabitTrackerContent({
   onSelectTask,
 }: HabitTrackerContentProps) {
   const utils = trpc.useUtils()
+  const isAuthenticated = authService.isAuthenticated()
 
-  // Fetch habits from backend
-  const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery()
+  // Fetch habits from backend - only when authenticated
+  const { data: habits, isLoading, error } = trpc.habits.getUserHabits.useQuery(undefined, {
+    enabled: isAuthenticated,
+  })
 
   // Debug logging for habit loading errors
   if (error) {

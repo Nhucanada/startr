@@ -241,7 +241,7 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
     if (taskTitle.trim() && onCreateTask) {
       setIsSubmitting(true)
       try {
-        await createHabitMutation.mutateAsync({ description: taskTitle.trim() })
+        await createHabitMutation.mutateAsync({ name: taskTitle.trim(), desc: taskDescription.trim() || undefined })
         onCreateTask(taskTitle.trim(), taskDescription.trim() || undefined)
         setTaskTitle('')
         setTaskDescription('')
@@ -265,7 +265,7 @@ export default function NewPageContent({ selectedTask, aiResponse, onToggleTask,
   const handleAddSuggestion = async (suggestion: string, index: number) => {
     setAddingSuggestion(index)
     try {
-      await createHabitMutation.mutateAsync({ description: suggestion })
+      await createHabitMutation.mutateAsync({ name: suggestion })
       onCreateTask?.(suggestion)
     } catch (error) {
       console.error('Failed to add suggestion as habit:', error)

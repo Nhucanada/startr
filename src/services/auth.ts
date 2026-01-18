@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient.js'
+import { vanillaTrpcClient } from '../utils/trpcClient.js'
 
 export interface LoginCredentials {
   email: string
@@ -18,27 +18,24 @@ export interface User {
 
 class AuthService {
   async login(credentials: LoginCredentials) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
+    const data = await vanillaTrpcClient.user.login.mutate({
       email: credentials.email,
       password: credentials.password,
     })
 
-    if (error) throw new Error(error.message)
+    if (data.session) {
+      localStorage.setItem('auth_token', data.session.access_token)
+      localStorage.setItem('user', JSON.stringify({ id: data.session.user.id, email: data.session.user.email }))
+    }
 
-    // Store token for tRPC client
-    localStorage.setItem('auth_token', data.session.access_token)
-    localStorage.setItem('user', JSON.stringify({ id: data.user.id, email: data.user.email }))
-
-    return { user: data.user, session: data.session }
+    return { session: data.session }
   }
 
   async register(credentials: RegisterCredentials) {
-    const { data, error } = await supabaseClient.auth.signUp({
+    const data = await vanillaTrpcClient.user.register.mutate({
       email: credentials.email,
       password: credentials.password,
     })
-
-    if (error) throw new Error(error.message)
 
     if (data.session) {
       localStorage.setItem('auth_token', data.session.access_token)
@@ -49,14 +46,13 @@ class AuthService {
   }
 
   async logout() {
-    await supabaseClient.auth.signOut()
+    await vanillaTrpcClient.user.logout.mutate()
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
   }
 
   async resetPassword(email: string) {
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email)
-    if (error) throw new Error(error.message)
+    await vanillaTrpcClient.user.password.reset.mutate({ email })
   }
 
   isAuthenticated(): boolean {

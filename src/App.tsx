@@ -108,7 +108,7 @@ function App() {
   const handleAiSubmit = async (prompt: string) => {
     // Create the habit using the backend
     try {
-      const result = await createHabitMutation.mutateAsync({ description: prompt })
+      const result = await createHabitMutation.mutateAsync({ name: prompt })
 
       // Transform the backend response into AIResponse format for display
       const plan = result.plan as { title?: string; frequency?: string; steps?: string[]; fun_fact?: string } | null
@@ -155,7 +155,7 @@ function App() {
 
   const handleCreateTask = async (title: string, _description?: string) => {
     try {
-      await createHabitMutation.mutateAsync({ description: title })
+      await createHabitMutation.mutateAsync({ name: title, desc: _description })
       // Also call the callback if it exists for local state update
       if (createTaskCallbackRef.current) {
         createTaskCallbackRef.current(title, _description)
@@ -167,7 +167,7 @@ function App() {
 
   const handleCreateTaskFromLeftPage = async (title: string, _description?: string) => {
     try {
-      await createHabitMutation.mutateAsync({ description: title })
+      await createHabitMutation.mutateAsync({ name: title, desc: _description })
     } catch (error) {
       console.error('Failed to create task from left page:', error)
     }

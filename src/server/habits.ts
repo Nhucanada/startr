@@ -179,7 +179,7 @@ const HabitService = {
         return data; // Returns { backdrop_url: "..." }
     },
 
-    completeHabit: async (supabase: SupabaseClient, userId: string, habitId: string) => {
+    completeHabit: async (supabase: SupabaseClient, adminSupabase: SupabaseClient, userId: string, habitId: string) => {
         // Ensure the habit belongs to the user before inserting completion
         const { data: habit, error: habitError } = await supabase
             .from('habits')
@@ -192,7 +192,8 @@ const HabitService = {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Habit not found or unauthorized' });
         }
 
-        const { data, error } = await supabase
+        // Use admin client for insert (bypasses RLS after ownership verified above)
+        const { data, error } = await adminSupabase
             .from('habit_completions')
             .insert({ habit_id: habitId })
             .select()
@@ -200,6 +201,37 @@ const HabitService = {
 
         if (error) throw error;
         return data;
+    },
+
+    uncompleteHabit: async (supabase: SupabaseClient, adminSupabase: SupabaseClient, userId: string, habitId: string) => {
+        // Ensure the habit belongs to the user
+        const { data: habit, error: habitError } = await supabase
+            .from('habits')
+            .select('id')
+            .eq('id', habitId)
+            .eq('user_id', userId)
+            .single();
+
+        if (habitError || !habit) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Habit not found or unauthorized' });
+        }
+
+        // Delete the most recent completion for today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const { data, error } = await adminSupabase
+            .from('habit_completions')
+            .delete()
+            .eq('habit_id', habitId)
+            .gte('created_at', today.toISOString())
+            .lt('created_at', tomorrow.toISOString())
+            .select();
+
+        if (error) throw error;
+        return { success: true, deleted: data?.length ?? 0 };
     },
 };
 
@@ -250,7 +282,7 @@ export const habitsRouter = router({
         }),
 
     // 2. Delete: /habits/delete/
-    deleteHabit: protectedProcedure
+    uncompleteHabit: protectedProcedure
         .input(z.object({
             uuid: z.string().uuid().optional(),
             name: z.string().optional(),
@@ -336,6 +368,15 @@ export const habitsRouter = router({
             habitId: z.string().uuid(),
         }))
         .mutation(async ({ ctx, input }) => {
-            return await HabitService.completeHabit(ctx.supabase, ctx.user.id, input.habitId);
+            return await HabitService.completeHabit(ctx.supabase, ctx.adminSupabase, ctx.user.id, input.habitId);
+        }),
+
+    // 8. Uncomplete: /habits/uncomplete/
+    uncompleteHabit: protectedProcedure
+        .input(z.object({
+            habitId: z.string().uuid(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return await HabitService.uncompleteHabit(ctx.supabase, ctx.adminSupabase, ctx.user.id, input.habitId);
         }),
 });
